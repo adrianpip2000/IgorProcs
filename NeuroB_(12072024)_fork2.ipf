@@ -2182,8 +2182,8 @@ Function Trains_Amp()
 	Wave w_resultsTrainInt_PhasicAUC = root:Results:TrainInt_PhasicAUC
 	Wave w_resultsTrainInt_PhasicAUCtotal = root:Results:TrainInt_PhasicAUCtotal
 	Wave w_tempAUC = root:WorkData:w_tempAUC
-	WaveStats/Q/R=(x0-0.05*1/gTrainfreq,x0) w_temp
-	Variable preStimBaseline0 = V_avg
+	//WaveStats/Q/M=1/R=(x0-0.001,x0) w_temp
+	//Variable preStimBaseline0 = V_avg
 	
 	Wave w_
 	
@@ -2204,9 +2204,12 @@ Function Trains_Amp()
 	post_pulse_baseline = V_avg
 	print "post_pulse_baseline =	", post_pulse_baseline
 	
-	WaveStats/Q/M=1/R=(x0-0.001,x0) w_temp
+	WaveStats/Q/M=1/R=(x0-0.001,x0) w_temp	//Averaging over 1 ms to get initial baseline (before train starts) -AdrianGR
 	Init_baseline = V_avg
 	print "Init_baseline =	", Init_baseline
+	
+	//WaveStats/Q/M=1/R=(x0-0.001,x0) w_temp
+	//Variable preStimBaseline0 = V_avg
 	
 	
 	DeleteAnnotations/W=Experiments/A //Deletes any previous tags (or other annotations) on the graph -AdrianGR
@@ -2223,42 +2226,46 @@ Function Trains_Amp()
 		endif
 		
 		
-		WaveStats/Q/M=1/R=(x1,x0+(j+1)/gTrainfreq) w_temp
+		//WaveStats/Q/M=1/R=(x1,x0+(j+1)/gTrainfreq) w_temp
+		WaveStats/Q/M=1/R=(x1,x0+1/gTrainfreq) w_temp
 		vmin_cache = V_minLoc
 		Init_amp = V_min - Init_baseline
 		w_resultsAll[n][j] = Init_Amp				//Save full amplitude to zero
 		w_resultsDel[n][j] = V_minLoc - x0		//Save delay from start of artefact to peak 
 		//wavestats/Q/M=1/R=(x0,x1) w_temp
 		//baseline=V_min
-		WaveStats/Q/M=1/R=(x0-0.001,x0) w_temp
+		WaveStats/Q/M=1/R=(x0-0.001,x0) w_temp	//averaging over 1 ms -AdrianGR
 		baseline = V_avg
-		amp = Init_amp - baseline						//Save evoked amplitude (to last sustained level).
-		w_resultsSync[n][j] = (amp)
+		amp = Init_amp - baseline					//Save evoked amplitude (to last sustained level).
+		w_resultsSync[n][j] = amp
 		
 		
 		//-AdrianGR //TODO: something wrong here? AUC doesn't seem to stay consistent when running multiple times, see also later
-		WaveStats/Q/R=(x0-0.05*(1/gTrainfreq),x0) w_temp		//Getting average from final 5% of previous pulse
+		WaveStats/Q/R=(x0-0.001,x0) w_temp		//Getting average from final 1 ms of previous pulse
 		Variable preStimBaseline = V_avg
 		WaveStats/Q/R=(x1,x1+1/gTrainfreq) w_temp
 		w_resultsTrainAmp_fromX0[n][j] = V_min - preStimBaseline	//Amplitude from baseline as defined above
 		w_resultsTrainInt_TonicX[n][j] = x0		//Saving X-coordinates for tonic release
 		w_resultsTrainInt_TonicY[n][j] = w_temp(x0)	//Saving Y-coordinates for tonic release
 		
+		
 		if (j>0) //TODO: something seems to be wrong in calculation of tonic AUC! Which then also changes the phasic since it is dependent on it -AdrianGR
 			Duplicate/O w_temp, w_temp2
-			w_temp2 = w_temp2 - preStimBaseline0
+			w_temp2 = w_temp2 - Init_baseline //- preStimBaseline0
 			Variable phasic = area(w_temp2, x1-1/gTrainfreq, x0)
 			//w_resultsTrainInt_PhasicAUC[n][j-1] = phasic
 			
+			Duplicate/O/RMD=[n][,*] w_resultsTrainInt_TonicX, w_temptrX
+			Duplicate/O/RMD=[n][,*] w_resultsTrainInt_TonicY, w_temptrY
 			Make/O/D/N=(2) w_tempX
 			w_tempX[0] = x1-1/gTrainfreq
-			w_tempX[1] = x0 //w_resultsTrainInt_TonicX[n][j]
+			w_tempX[1] = x0
 			Make/O/D/N=(2) w_tempY
-			w_tempY[0] = interp(x1-1/gTrainfreq, w_resultsTrainInt_TonicX, w_resultsTrainInt_TonicY)
-			w_tempY[1] = w_resultsTrainInt_TonicY[n][j]
-			w_tempY = w_tempY - preStimBaseline0
-			print w_tempX
-			print w_tempY
+			w_tempY[0] = interp(w_tempX[0], w_temptrX, w_temptrY)
+			w_tempY[1] = w_temptrY[0][j]
+			w_tempY = w_tempY - Init_baseline
+			//print w_tempX
+			//print w_tempY
 			Variable tonic = areaXY(w_tempX, w_tempY, w_tempX[0], w_tempX[1])
 			w_resultsTrainInt_TonicAUC[n][j-1] = tonic
 			
@@ -2270,7 +2277,7 @@ Function Trains_Amp()
 		
 		
 		AUCbaselineX[n][j] = x0
-		AUCbaselineY[n][j] = preStimBaseline0
+		AUCbaselineY[n][j] = Init_baseline
 		
 		//print areaXY(tempw_resTrIntX, tempw_resTrIntY, x1, x0+1/gTrainfreq) //TODO: fix this. Find a way to get tonic release for each pulse (also minus baseline) -AdrianGR
 		
@@ -2352,7 +2359,7 @@ Function Trains_Amp()
 	//Make/O/N=(2) AUCbaselineY
 	//AUCbaselineY = preStimBaseline0
 	AUCbaselineX[n][INF] = w_resultsTrainInt_TonicX[n][INF]
-	AUCbaselineY[n][INF] = preStimBaseline0//*-100
+	AUCbaselineY[n][INF] = Init_baseline//*-100
 	Duplicate/O/RMD=[n][,*] AUCbaselineX, AUCbaselineX2
 	Duplicate/O/RMD=[n][,*] AUCbaselineY, AUCbaselineY2
 	AppendToGraph/W=Experiments/C=(0,55555,55555) AUCbaselineY2 vs AUCbaselineX2 //TODO: why does this not show up correctly the graph???? -AdrianGR
@@ -3159,13 +3166,20 @@ Function BlankArtifactInTrain(w,x0,x1,freq,num_stim)
 	variable freq,num_stim
 	variable i, AverageT=0.001, TempAverage
 	
-	i=0
-	do
-		TempAverage = mean(w, x0+i/freq-AverageT,pnt2x(w,x2pnt(w,x0+i/freq)-1)) 	//Added by Jakob to average over 1 ms
-//		w[x2pnt(w,x0+i/freq),x2pnt(w,0.000025*i+x1+i/freq)]=w[x2pnt(w,x0+i/freq)-1]
-		w[x2pnt(w,x0+i/freq),x2pnt(w,0.000025*i+x1+i/freq)]=TempAverage
-		i += 1
-	while (i<num_stim)
+	for(i=0; i<num_stim; i+=1)
+		//WaveStats/Q/M=1/R=(x0+i/freq-AverageT,x0+i/freq) w
+		//TempAverage = V_avg
+		TempAverage = mean(w, x0+i/freq-AverageT, x0+i/freq)
+		w[x2pnt(w, x0+i/freq)+1, x2pnt(w, x1+i/freq)+2] = TempAverage //Shifted first index by 1 to avoid modifying the actual point of x0. Shifted index for x1 to correct for imperfectly timed artefacts -AdrianGR
+	endfor
+	
+//	i=0
+//	do
+//		TempAverage = mean(w, x0+i/freq-AverageT,pnt2x(w,x2pnt(w,x0+i/freq)-1)) 	//Added by Jakob to average over 1 ms
+////		w[x2pnt(w,x0+i/freq),x2pnt(w,0.000025*i+x1+i/freq)]=w[x2pnt(w,x0+i/freq)-1]
+//		w[x2pnt(w,x0+i/freq),x2pnt(w,0.000025*i+x1+i/freq)]=TempAverage
+//		i += 1
+//	while (i<num_stim)
 End
 
 Function BlankArtifactInTrain2(w,x0,x1,freq,num_stim)
