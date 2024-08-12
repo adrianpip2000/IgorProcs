@@ -1902,7 +1902,7 @@ Function Trains_Charge()
 			PauseUpdate
 				Init_charge=area(w_temp, x0+dx+j/gTrainFreq, x0+dx+(j+1)/gTrainFreq)
 				x1=x0+dx+j/gTrainFreq
-				x2=x0+dx+(j+1)/gTrainFreq
+				x2=x0+dx+(j+1)/gTrainFreq 		//Comment: doesn't this then also end up including the area of the artefact? -AdrianGR
 				y1=w_temp(x0+dx+j/gTrainFreq)
 				y2=w_temp(x0+dx+(j+1)/gTrainFreq)
 				Baseline_charge=0.5*(y1+y2)*(x2-x1)
@@ -2114,20 +2114,17 @@ Function Trains_Amp()
 	if (WaveExists('TrainAmp_corrected')==0)		//Wave for saving Amplitudes calculated from decay fitting
 		Make/N=(1,cols) 'TrainAmp_corrected'
 	endif
-	if (WaveExists('TrainAmp_fromX0')==0)		//Wave for saving Amplitudes to level of end of previous pulse //-AdrianGR
-		Make/N=(1,cols) 'TrainAmp_fromX0'
+	if (WaveExists('TrainAmp_fromInitBaseline')==0)		//Wave for saving Amplitudes to level of end of previous pulse //-AdrianGR
+		Make/N=(1,cols) 'TrainAmp_fromInitBaseline'
 	endif
-	if (WaveExists('TrainInt_TonicAUCtotal')==0)		//Wave for saving tonic release AUC //-AdrianGR
-		Make/N=(cols) 'TrainInt_TonicAUCtotal'
+	if (WaveExists('TrainAmp_ASyncAUC')==0)
+		Make/N=(1,cols) 'TrainAmp_ASyncAUC'
 	endif
-	if (WaveExists('TrainInt_TonicAUC')==0)
-		Make/N=(1,cols) 'TrainInt_TonicAUC'
+	if (WaveExists('TrainAmp_ASyncLineX')==0)		//Wave for saving tonic release X-positions //-AdrianGR
+		Make/N=(1,cols+1) 'TrainAmp_ASyncLineX'
 	endif
-	if (WaveExists('TrainInt_TonicX')==0)		//Wave for saving tonic release X-positions //-AdrianGR
-		Make/N=(1,cols+1) 'TrainInt_TonicX'
-	endif
-	if (WaveExists('TrainInt_TonicY')==0)		//Wave for saving tonic release Y-positions //-AdrianGR
-		Make/N=(1,cols+1) 'TrainInt_TonicY'
+	if (WaveExists('TrainAmp_ASyncLineY')==0)		//Wave for saving tonic release Y-positions //-AdrianGR
+		Make/N=(1,cols+1) 'TrainAmp_ASyncLineY'
 	endif
 	if (WaveExists('AUCbaselineX')==0)
 		Make/N=(1,cols+1) 'AUCbaselineX'
@@ -2140,6 +2137,12 @@ Function Trains_Amp()
 	endif
 	if (WaveExists('TrainInt_PhasicAUCtotal')==0)
 		Make/N=(cols) 'TrainInt_PhasicAUCtotal'
+	endif
+	if (WaveExists('TrainAmp_ASyncAUC_cumulative')==0)
+		Make/N=(1,cols) 'TrainAmp_ASyncAUC_cumulative'
+	endif
+	if (WaveExists('TrainAmp_SyncAUC_cumulative')==0)
+		Make/N=(1,cols) 'TrainAmp_SyncAUC_cumulative'
 	endif
 	
 	
@@ -2172,27 +2175,30 @@ Function Trains_Amp()
 	wave /T w_resultsPro=root:Results:TrainExperiments_protocol
 	
 	//-AdrianGR
-	Wave w_resultsTrainAmp_fromX0 = root:Results:TrainAmp_fromX0
-	Wave w_resultsTrainInt_TonicAUCtotal = root:Results:TrainInt_TonicAUCtotal
-	Wave w_resultsTrainInt_TonicAUC = root:Results:TrainInt_TonicAUC
-	Wave w_resultsTrainInt_TonicX = root:Results:TrainInt_TonicX
-	Wave w_resultsTrainInt_TonicY = root:Results:TrainInt_TonicY
+	Wave w_resultsTrainAmp_fromInitBaseline = root:Results:TrainAmp_fromInitBaseline
+	Wave w_resultsTrainAmp_ASyncAUC = root:Results:TrainAmp_ASyncAUC
+	Wave w_resultsTrainAmp_ASyncLineX = root:Results:TrainAmp_ASyncLineX
+	Wave w_resultsTrainAmp_ASyncLineY = root:Results:TrainAmp_ASyncLineY
 	Wave AUCbaselineX = root:Results:AUCbaselineX
 	Wave AUCbaselineY = root:Results:AUCbaselineY
 	Wave w_resultsTrainInt_PhasicAUC = root:Results:TrainInt_PhasicAUC
 	Wave w_resultsTrainInt_PhasicAUCtotal = root:Results:TrainInt_PhasicAUCtotal
 	Wave w_tempAUC = root:WorkData:w_tempAUC
-	//WaveStats/Q/M=1/R=(x0-0.001,x0) w_temp
-	//Variable preStimBaseline0 = V_avg
+	Wave w_resultsTrainAmp_ASyncAUC_cumulative = root:Results:TrainAmp_ASyncAUC_cumulative
+	Wave w_resultsTrainAmp_SyncAUC_cumulative = root:Results:TrainAmp_SyncAUC_cumulative
+	
 	
 	Wave w_
+	
+	Variable avgT = 0.002	//define time interval for averaging -AdrianGR
 	
 	n=DimSize(w_resultsSync,0)+1
 	Redimension/N=(n,-1) w_resultsSync, w_resultsAll, w_resultsDel, w_resultsCorr
 	Redimension/N=(n) w_resultsExp, w_resultsPro
-	Redimension/N=(n) w_resultsTrainInt_TonicAUCtotal //-AdrianGR
-	Redimension/N=(n,-1) w_resultsTrainAmp_fromX0, w_resultsTrainInt_TonicAUC, w_resultsTrainInt_TonicX, w_resultsTrainInt_TonicY, AUCbaselineX, AUCbaselineY, w_resultsTrainInt_PhasicAUC, w_resultsTrainInt_PhasicAUCtotal
+	//-AdrianGR
+	Redimension/N=(n,-1) w_resultsTrainAmp_fromInitBaseline, w_resultsTrainAmp_ASyncAUC, w_resultsTrainAmp_ASyncLineX, w_resultsTrainAmp_ASyncLineY, AUCbaselineX, AUCbaselineY, w_resultsTrainInt_PhasicAUC, w_resultsTrainInt_PhasicAUCtotal
 	Redimension/N=(n,-1) w_tempAUC
+	Redimension/N=(n,-1) w_resultsTrainAmp_ASyncAUC_cumulative, w_resultsTrainAmp_SyncAUC_cumulative
 	
 	BlankArtifactInTrain(w_temp,x0,x1,gTrainfreq,gTrainStim)
 	n -= 1
@@ -2200,22 +2206,20 @@ Function Trains_Amp()
 	
 	SetDataFolder root:WorkData:
 	
-	WaveStats/Q/M=1/R=[numpnts(w_temp)-2001,numpnts(w_temp)-1] w_temp
+	WaveStats/Q/M=1/R=(pnt2x(w_temp,numpnts(w_temp)-1)-5*avgT,pnt2x(w_temp,numpnts(w_temp)-1)) w_temp //Averaging over last 5*avgT to get final baseline (at end of wave) -AdrianGR
 	post_pulse_baseline = V_avg
 	print "post_pulse_baseline =	", post_pulse_baseline
 	
-	WaveStats/Q/M=1/R=(x0-0.001,x0) w_temp	//Averaging over 1 ms to get initial baseline (before train starts) -AdrianGR
+	WaveStats/Q/M=1/R=(x0-5*avgT,x0) w_temp	//Averaging over 5*avgT to get initial baseline (before train starts) -AdrianGR
 	Init_baseline = V_avg
 	print "Init_baseline =	", Init_baseline
 	
-	//WaveStats/Q/M=1/R=(x0-0.001,x0) w_temp
-	//Variable preStimBaseline0 = V_avg
+	Variable x0_cache = x0
+	Variable x1_cache = x1
 	
 	
 	DeleteAnnotations/W=Experiments/A //Deletes any previous tags (or other annotations) on the graph -AdrianGR
 	
-	Make/O/D/N=(2) w_idkY
-	Make/O/D/N=(2) w_idkX
 	
 	do
 		if (j>0)
@@ -2234,29 +2238,29 @@ Function Trains_Amp()
 		w_resultsDel[n][j] = V_minLoc - x0		//Save delay from start of artefact to peak 
 		//wavestats/Q/M=1/R=(x0,x1) w_temp
 		//baseline=V_min
-		WaveStats/Q/M=1/R=(x0-0.001,x0) w_temp	//averaging over 1 ms -AdrianGR
+		WaveStats/Q/M=1/R=(x0-avgT,x0) w_temp	//averaging over avgT (for last sustained level) -AdrianGR
 		baseline = V_avg
 		amp = Init_amp - baseline					//Save evoked amplitude (to last sustained level).
-		w_resultsSync[n][j] = amp //testcomment
+		w_resultsSync[n][j] = amp
 		
 		
 		//-AdrianGR //TODO: something wrong here? AUC doesn't seem to stay consistent when running multiple times, see also later
-		WaveStats/Q/R=(x0-0.001,x0) w_temp		//Getting average from final 1 ms of previous pulse
+		WaveStats/Q/R=(x0-avgT,x0) w_temp								//Getting average from final avgT of previous pulse
 		Variable preStimBaseline = V_avg
 		WaveStats/Q/R=(x1,x1+1/gTrainfreq) w_temp
-		w_resultsTrainAmp_fromX0[n][j] = V_min - preStimBaseline	//Amplitude from baseline as defined above
-		w_resultsTrainInt_TonicX[n][j] = x0		//Saving X-coordinates for tonic release
-		w_resultsTrainInt_TonicY[n][j] = w_temp(x0)	//Saving Y-coordinates for tonic release
+		w_resultsTrainAmp_fromInitBaseline[n][j] = V_min - preStimBaseline	//Amplitude from baseline as defined above
+		w_resultsTrainAmp_ASyncLineX[n][j] = x0								//Saving X-coordinates for tonic release
+		w_resultsTrainAmp_ASyncLineY[n][j] = w_temp(x0)					//Saving Y-coordinates for tonic release
+		//w_resultsTrainAmp_ASyncLineY[n][j] = mean(w_temp,x0-avgT,x0)	//TODO: not sure if it is reasonable to take an average(?) -AdrianGR
 		
 		
-		if (j>0) //TODO: something seems to be wrong in calculation of tonic AUC! Which then also changes the phasic since it is dependent on it -AdrianGR
+		if (j>0 && 1==0) //DISABLED by 1==0 //TODO: ?? -AdrianGR
 			Duplicate/O w_temp, w_temp2
-			w_temp2 = w_temp2 - Init_baseline //- preStimBaseline0
+			w_temp2 = w_temp2 - Init_baseline
 			Variable phasic = area(w_temp2, x1-1/gTrainfreq, x0)
-			//w_resultsTrainInt_PhasicAUC[n][j-1] = phasic
 			
-			Duplicate/O/RMD=[n][,*] w_resultsTrainInt_TonicX, w_temptrX
-			Duplicate/O/RMD=[n][,*] w_resultsTrainInt_TonicY, w_temptrY
+			Duplicate/O/RMD=[n][,*] w_resultsTrainAmp_ASyncLineX, w_temptrX
+			Duplicate/O/RMD=[n][,*] w_resultsTrainAmp_ASyncLineY, w_temptrY
 			Make/O/D/N=(2) w_tempX
 			w_tempX[0] = x1-1/gTrainfreq
 			w_tempX[1] = x0
@@ -2267,17 +2271,16 @@ Function Trains_Amp()
 			//print w_tempX
 			//print w_tempY
 			Variable tonic = areaXY(w_tempX, w_tempY, w_tempX[0], w_tempX[1])
-			w_resultsTrainInt_TonicAUC[n][j-1] = tonic
+			w_resultsTrainAmp_ASyncAUC[n][j-1] = tonic
 			
 			Variable phasicMinusTonic = phasic - tonic
 			w_resultsTrainInt_PhasicAUC[n][j-1] = phasicMinusTonic
-			print "phasic: ", phasic, "tonic: ", tonic
-			
+			//print "phasic: ", phasic, "tonic: ", tonic
 		endif
 		
 		
-		AUCbaselineX[n][j] = x0
-		AUCbaselineY[n][j] = Init_baseline
+		//AUCbaselineX[n][j] = x0
+		//AUCbaselineY[n][j] = Init_baseline
 		
 		//print areaXY(tempw_resTrIntX, tempw_resTrIntY, x1, x0+1/gTrainfreq) //TODO: fix this. Find a way to get tonic release for each pulse (also minus baseline) -AdrianGR
 		
@@ -2346,33 +2349,52 @@ Function Trains_Amp()
 		j += 1
 	while (j <= gTrainStim)
 	
-	//TODO: something wrong here? AUC doesn't seem to stay consistent when running multiple times, see also earlier -AdrianGR
-	Duplicate/O/RMD=[n][,*] w_resultsTrainInt_TonicAUC, w_tempAgain
-	w_resultsTrainInt_TonicAUCtotal[n] = sum(w_tempAgain)
-	print "Total tonic release AUC: ", w_resultsTrainInt_TonicAUCtotal[n]
-	Duplicate/O/RMD=[n][,*] w_resultsTrainInt_PhasicAUC, w_tempAgainAgain
-	w_resultsTrainInt_PhasicAUCtotal[n] = sum(w_tempAgainAgain)
-	print "Total phasic release AUC: ", w_resultsTrainInt_PhasicAUCtotal[n]
 	
-	//Make/O/N=(2) AUCbaselineX
-	//AUCbaselineX[0] = w_resultsTrainInt_TonicX[n][0]; AUCbaselineX[0] = w_resultsTrainInt_TonicX[n][INF]
-	//Make/O/N=(2) AUCbaselineY
-	//AUCbaselineY = preStimBaseline0
-	AUCbaselineX[n][INF] = w_resultsTrainInt_TonicX[n][INF]
-	AUCbaselineY[n][INF] = Init_baseline//*-100
-	Duplicate/O/RMD=[n][,*] AUCbaselineX, AUCbaselineX2
-	Duplicate/O/RMD=[n][,*] AUCbaselineY, AUCbaselineY2
-	AppendToGraph/W=Experiments/C=(0,55555,55555) AUCbaselineY2 vs AUCbaselineX2 //TODO: why does this not show up correctly the graph???? -AdrianGR
 	
-	//Saving tonic release AUC results. A bit messy, but it works (I think) -AdrianGR
-	//Duplicate/O/RMD=[n][,*] w_resultsTrainInt_TonicX, tempw_resTrIntX
-	//Duplicate/O/RMD=[n][,*] w_resultsTrainInt_TonicY, tempw_resTrIntY
-	//tempw_resTrIntY = tempw_resTrIntY - preStimBaseline0
-	//Variable TonicAUC = areaXY(tempw_resTrIntX, tempw_resTrIntY)
-	//w_resultsTrainInt_TonicAUCtotal[n] = TonicAUC
-	//print "Tonic release AUC: ", TonicAUC
+	Duplicate/O w_temp, w_temp2
+	w_temp2 = w_temp2 - Init_baseline
+	Duplicate/O/RMD=[n][,*] w_resultsTrainAmp_ASyncLineX, w_temptrX
+	Duplicate/O/RMD=[n][,*] w_resultsTrainAmp_ASyncLineY, w_temptrY
+	Variable r; x0 = x0_cache; x1 = x1_cache
+	for(r=0; r<gTrainStim; r+=1)
+		//break
+		Make/O/D/N=(2) w_tempX
+		w_tempX[0] = x1+r/gTrainfreq
+		w_tempX[1] = x0+(r+1)/gTrainfreq
+		Variable syncPlusASyncArea = area(w_temp2, w_tempX[0], w_tempX[1])
+		Make/O/D/N=(2) w_tempY
+		w_tempY[0] = interp(w_tempX[0], w_temptrX, w_temptrY)
+		w_tempY[1] = w_temptrY[0][r+1]
+		w_tempY = w_tempY - Init_baseline
+		Variable ASyncArea = areaXY(w_tempX, w_tempY, w_tempX[0], w_tempX[1])
+		
+		w_resultsTrainAmp_ASyncAUC[n][r] = ASyncArea
+		w_resultsTrainInt_PhasicAUC[n][r] = syncPlusASyncArea - ASyncArea
+	endfor
+	KillWaves w_temptrX, w_temptrY, w_tempX, w_tempY
 	
-	AppendToGraph/W=Experiments/C=(0,0,55555) w_resultsTrainInt_TonicY[n][,*] vs w_resultsTrainInt_TonicX[n][,*] //-AdrianGR
+	
+	w_resultsTrainAmp_ASyncAUC_cumulative[n][0] = w_resultsTrainAmp_ASyncAUC[n][0]
+	//w_resultsTrainAmp_ASyncAUC_cumulative[n][1,*] = w_resultsTrainAmp_ASyncAUC[n][q] + w_resultsTrainAmp_ASyncAUC_cumulative[n][q-1]	//this line does the same as the for-loop below -AdrianGR
+	Variable h
+	for(h=1; h<DimSize(w_resultsTrainAmp_ASyncAUC,1); h+=1)
+		w_resultsTrainAmp_ASyncAUC_cumulative[n][h] = w_resultsTrainAmp_ASyncAUC[n][h] + w_resultsTrainAmp_ASyncAUC_cumulative[n][h-1]
+	endfor
+	w_resultsTrainAmp_SyncAUC_cumulative[n][0] = w_resultsTrainInt_PhasicAUC[n][0]
+	//w_resultsTrainAmp_SyncAUC_cumulative[n][1,*] = w_resultsTrainAmp_SyncAUC[n][q] + w_resultsTrainAmp_SyncAUC_cumulative[n][q-1]		//this line does the same as the for-loop below -AdrianGR
+	for(h=1; h<DimSize(w_resultsTrainInt_PhasicAUC,1); h+=1)
+		w_resultsTrainAmp_SyncAUC_cumulative[n][h] = w_resultsTrainInt_PhasicAUC[n][h] + w_resultsTrainAmp_SyncAUC_cumulative[n][h-1]
+	endfor
+	
+	print "Total asynchronous release AUC:	", w_resultsTrainAmp_ASyncAUC_cumulative[n][INF]
+	print "Total synchronous release AUC:	", w_resultsTrainAmp_SyncAUC_cumulative[n][INF]
+	
+	
+	AUCbaselineX[n][,*] = w_resultsTrainAmp_ASyncLineX[n][q]
+	AUCbaselineY[n][,*] = Init_baseline
+	AppendToGraph/W=Experiments/C=(0,55555,55555) AUCbaselineY[n][,*] vs AUCbaselineX[n][,*] //In effect shows Init_baseline on graph -AdrianGR
+	
+	AppendToGraph/W=Experiments/C=(0,0,55555) w_resultsTrainAmp_ASyncLineY[n][,*] vs w_resultsTrainAmp_ASyncLineX[n][,*] //-AdrianGR
 	
 	
 	print n
