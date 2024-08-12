@@ -2200,13 +2200,13 @@ Function Trains_Amp()
 	
 	SetDataFolder root:WorkData:
 	
-	wavestats/Q/M=1/R=[numpnts(w_temp)-2001,numpnts(w_temp)-1] w_temp
-	post_pulse_baseline=V_avg
-	print "post_pulse_baseline =", post_pulse_baseline
+	WaveStats/Q/M=1/R=[numpnts(w_temp)-2001,numpnts(w_temp)-1] w_temp
+	post_pulse_baseline = V_avg
+	print "post_pulse_baseline =	", post_pulse_baseline
 	
-	wavestats/Q/M=1/R=(x0,x1) w_temp
-	Init_baseline=V_min
-	print "Init_baseline = ", Init_baseline
+	WaveStats/Q/M=1/R=(x0-0.001,x0) w_temp
+	Init_baseline = V_avg
+	print "Init_baseline =	", Init_baseline
 	
 	
 	DeleteAnnotations/W=Experiments/A //Deletes any previous tags (or other annotations) on the graph -AdrianGR
@@ -2223,15 +2223,17 @@ Function Trains_Amp()
 		endif
 		
 		
-		wavestats/Q/M=1/R=(x1,x0+(j+1)/gTrainfreq) w_temp
-		vmin_cache=V_minloc
-		Init_amp=V_min-Init_baseline
-		w_resultsAll[n][j] += (Init_Amp)					//Save full amplitude to zero
-		w_resultsDel[n][j] += V_minloc-(x0)	//Save delay from start of artefact to peak 
-		wavestats/Q/M=1/R=(x0,x1) w_temp
-		baseline=V_min
-		amp=Init_amp-baseline						//Save evoked amplitude (to last sustained level).
-		w_resultsSync[n][j] += (amp)
+		WaveStats/Q/M=1/R=(x1,x0+(j+1)/gTrainfreq) w_temp
+		vmin_cache = V_minLoc
+		Init_amp = V_min - Init_baseline
+		w_resultsAll[n][j] = Init_Amp				//Save full amplitude to zero
+		w_resultsDel[n][j] = V_minLoc - x0		//Save delay from start of artefact to peak 
+		//wavestats/Q/M=1/R=(x0,x1) w_temp
+		//baseline=V_min
+		WaveStats/Q/M=1/R=(x0-0.001,x0) w_temp
+		baseline = V_avg
+		amp = Init_amp - baseline						//Save evoked amplitude (to last sustained level).
+		w_resultsSync[n][j] = (amp)
 		
 		
 		//-AdrianGR //TODO: something wrong here? AUC doesn't seem to stay consistent when running multiple times, see also later
