@@ -2237,7 +2237,7 @@ Function Trains_Amp()
 		WaveStats/Q/M=1/R=(x0-0.001,x0) w_temp	//averaging over 1 ms -AdrianGR
 		baseline = V_avg
 		amp = Init_amp - baseline					//Save evoked amplitude (to last sustained level).
-		w_resultsSync[n][j] = amp
+		w_resultsSync[n][j] = amp //testcomment
 		
 		
 		//-AdrianGR //TODO: something wrong here? AUC doesn't seem to stay consistent when running multiple times, see also later
