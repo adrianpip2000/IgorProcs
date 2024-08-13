@@ -2121,10 +2121,10 @@ Function Trains_Amp()
 	if (WaveExists('TrainAmp_ASyncAUC')==0)
 		Make/N=(1,cols) 'TrainAmp_ASyncAUC'
 	endif
-	if (WaveExists('TrainAmp_ASyncLineX')==0)		//Wave for saving tonic release X-positions //-AdrianGR
+	if (WaveExists('TrainAmp_ASyncLineX')==0)		//Wave for saving async release X-positions //-AdrianGR
 		Make/N=(1,cols+1) 'TrainAmp_ASyncLineX'
 	endif
-	if (WaveExists('TrainAmp_ASyncLineY')==0)		//Wave for saving tonic release Y-positions //-AdrianGR
+	if (WaveExists('TrainAmp_ASyncLineY')==0)		//Wave for saving async release Y-positions //-AdrianGR
 		Make/N=(1,cols+1) 'TrainAmp_ASyncLineY'
 	endif
 	if (WaveExists('TrainAmp_SyncAUC')==0)
