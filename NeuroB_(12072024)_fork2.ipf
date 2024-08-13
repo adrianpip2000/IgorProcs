@@ -279,7 +279,7 @@ Function DoElectrophysiologicalAnalysis()
 MyDFInit()
 NeuroBunnyInit()
 // Create the Analysis Panel
-NewPanel/W=(20,50,215,700) /N=NeuroBunny		
+NewPanel/W=(20,50,215,725) /N=NeuroBunny		
 SetDrawEnv/W=NeuroBunny fname="Arial",fsize=11, save							
 	DrawText/W=NeuroBunny 9,21,"Graph"
 		Button ctrlPreviousGraph,pos={55,3},size={60,20},proc=proc_PreviousGraph,title="previous",win=NeuroBunny, fsize=10
@@ -295,16 +295,17 @@ SetDrawEnv/W=NeuroBunny fname="Arial",fsize=11, save
 //	DrawLine/W=NeuroBunny 5,105,190,105
 	DrawLine/W=NeuroBunny 5,107,190,107
 	DrawLine/W=NeuroBunny 5,109,190,109
-	DrawLine/W=NeuroBunny 5,620,190,620
 	DrawLine/W=NeuroBunny 5,520,190,520
+	DrawLine/W=NeuroBunny 5,645,190,645
 //		Button ctrlFolder,pos={5,625},size={90,20},proc=proc_GaussFilter,title="GaussFilter",win=NeuroBunny, fsize=10
-		Button ctrlResWave,pos={5,625},size={90,20},proc=proc_Init,title="Init",win=NeuroBunny, fsize=10, fColor=(51143,62708,65535)
+		Button ctrlAutoscale,pos={5,530},size={90,30},proc=procMenuNB,title="Autoscale",win=NeuroBunny, fsize=10
 		Button ctrlBL1a,pos={5,565},size={90,20},proc=procMenuNB,title="Shift @ Start",win=NeuroBunny, fsize=10
 		Button ctrlBL1b,pos={100,565},size={90,20},proc=procMenuNB,title="Shift [A,B]",win=NeuroBunny, fsize=10
-		Button ctrlBL2a,pos={5,590},size={90,20},proc=procMenuNB,title="Corr. Full Trace", fsize=10
-		Button ctrlBL2b,pos={100,590},size={90,20},proc=procMenuNB,title="Corr. [A,B][C,D]", fsize=10
-		Button ctrlWvAverage,pos={100,625},size={90,20},proc=procMenuNB,title="Average Waves",win=NeuroBunny, fsize=10
-		Button ctrlAutoscale,pos={5,530},size={90,30},proc=procMenuNB,title="Autoscale",win=NeuroBunny, fsize=10
+		Button ctrlBLstartToA,pos={5,590},size={90,20},proc=procMenuNB,title="Shift [start,A]",win=NeuroBunny, fsize=10
+		Button ctrlBL2a,pos={5,615},size={90,20},proc=procMenuNB,title="Corr. Full Trace", fsize=10
+		Button ctrlBL2b,pos={100,615},size={90,20},proc=procMenuNB,title="Corr. [A,B][C,D]", fsize=10
+		Button ctrlResWave,pos={5,650},size={90,20},proc=proc_Init,title="Init",win=NeuroBunny, fsize=10, fColor=(51143,62708,65535)
+		Button ctrlWvAverage,pos={100,650},size={90,20},proc=procMenuNB,title="Average Waves",win=NeuroBunny, fsize=10
 
 //			TabControl ctrlATab,pos={5,113},size={241,15},tabLabel(3)="BL",proc=AnalysisTab,win=NeuroBunny,value=3			// 4th Tab, 1st row
 //			Button ctrlBL2,pos={20,155},size={140,20},fColor=(228,228,0),proc=Proc_Baseline2R,title="Two-Region Baseline",win=NeuroBunny,disable=1, fsize=10
@@ -953,6 +954,14 @@ Function BackwCursorB()
 	
 end
 
+
+Function BaselineStartToA()
+	Variable Baseline_X0, Baseline_X1,leak
+	
+	Baseline_X1=xcsr(A,"Experiments")
+	leak=baselinewave(waverefindexed("Experiments",0,1),0,Baseline_X1)
+	print wavename("",0,1),"\tleak\t",leak
+End
 
 Function BaselineSelected()
 	Variable Baseline_X0, Baseline_X1,leak
@@ -1863,7 +1872,13 @@ Function Trains_Charge()
 		if (WaveExists(TrainAmp_CCum)==0)
 			Make/N=(1,cols) TrainAmp_CCum
 		endif
-		SetDataFolder root:Results:Backextr		
+		if (WaveExists(TrainAmp_CSyncCum)==0)
+			Make/N=(1,cols) TrainAmp_CSyncCum
+		endif
+		if (WaveExists(TrainAmp_CASyncCum)==0)
+			Make/N=(1,cols) TrainAmp_CASyncCum
+		endif
+	SetDataFolder root:Results:Backextr		
 		if (WaveExists(TrainBackextr_RRP)==0)
 			Make/N=(1) TrainBackextr_RRP
 		endif
@@ -1882,11 +1897,13 @@ Function Trains_Charge()
 		Make/O/N=(gTrainStim) $CCwave
 		SetDataFolder root:Results
 		
-		wave/Z w_temp=root:WorkData:$gTheWave			// Make references to used waves
-		wave/Z w_results=root:Results:TrainAmp_Csync
-		wave/Z w_Aresults=root:Results:TrainAmp_CAsync
-		wave/Z w_Allresults=root:Results:TrainAmp_CAll
-		wave/Z w_Cumresults=root:Results:TrainAmp_CCum
+		wave/Z w_temp=root:WorkData:$gTheWave									// Make references to used waves
+		wave/Z w_results=root:Results:TrainAmp_Csync							//Charge, syncronous
+		wave/Z w_Aresults=root:Results:TrainAmp_CAsync						//Charge, asyncronous
+		wave/Z w_Allresults=root:Results:TrainAmp_CAll						//Charge, syncronous+asyncronous
+		wave/Z w_Cumresults=root:Results:TrainAmp_CCum						//Cumulative charge, syncronous+asyncronous
+		wave/Z w_SyncCumresults=root:Results:TrainAmp_CSyncCum				//Cumulative charge, syncronous
+		wave/Z w_ASyncCumresults=root:Results:TrainAmp_CASyncCum			//Cumulative charge, asyncronous
 		wave/Z w_BExtrRRP=root:Results:Backextr:TrainBackextr_RRP
 		wave/Z w_BExtrPrate=root:Results:Backextr:TrainBackextr_Prate
 		wave/Z w_BExtrRelPr=root:Results:Backextr:TrainBackextr_RelPr
@@ -1895,34 +1912,42 @@ Function Trains_Charge()
 		wave/Z w_fitwave=root:Results:Backextr:$Fitwave
 		
 		n=DimSize(w_results,0)+1
-		Redimension/N=(n,-1) w_results, w_Aresults, w_Allresults, w_Cumresults
+		Redimension/N=(n,-1) w_results, w_Aresults, w_Allresults, w_Cumresults, w_SyncCumresults, w_ASyncCumresults
 		Redimension/N=(n,-1) w_BExtrRRP, w_BExtrPrate,  w_BExtrRelPr, w_BExtrRelOK
 		j=0
 		do
 			PauseUpdate
 				Init_charge=area(w_temp, x0+dx+j/gTrainFreq, x0+dx+(j+1)/gTrainFreq)
 				x1=x0+dx+j/gTrainFreq
-				x2=x0+dx+(j+1)/gTrainFreq 		//Comment: doesn't this then also end up including the area of the artefact? -AdrianGR
+				x2=x0+dx+(j+1)/gTrainFreq
 				y1=w_temp(x0+dx+j/gTrainFreq)
 				y2=w_temp(x0+dx+(j+1)/gTrainFreq)
 				Baseline_charge=0.5*(y1+y2)*(x2-x1)
 			//	area(w_temp, x0+j/gTrainfreq,x0+dx+j/gTrainfreq)*interval
 			//	print "BL_charge = ",Baseline_charge		
-				charge=Init_charge-Baseline_charge	
+				charge=Init_charge-Baseline_charge
 			//	print "charge = ",charge
-				w_results[n-1][j] += (charge)
-				w_Aresults[n-1][j] += (Baseline_charge)
-				w_Allresults[n-1][j] += (charge)+(Baseline_charge)
+				w_results[n-1][j] = (charge)
+				w_Aresults[n-1][j] = (Baseline_charge)
+				w_Allresults[n-1][j] = (charge)+(Baseline_charge)
 				if(j==0)
-					w_Cumresults[n-1][j] += (charge)+(Baseline_charge)
+					w_SyncCumresults[n-1][j] = w_results[n-1][j]
+					w_ASyncCumresults[n-1][j] = w_Aresults[n-1][j]
+					w_Cumresults[n-1][j] = (charge)+(Baseline_charge)
 				else
-					w_Cumresults[n-1][j] += (charge)+(Baseline_charge) - w_Cumresults[n][j-1]
+					w_SyncCumresults[n-1][j] = w_results[n-1][j] + w_SyncCumresults[n-1][j-1]
+					w_ASyncCumresults[n-1][j] = w_Aresults[n-1][j] + w_ASyncCumresults[n-1][j-1]
+					w_Cumresults[n-1][j] = (charge)+(Baseline_charge) + w_Cumresults[n-1][j-1]
 				endif
-				w_Cumresults[n-1][j]*=-1
-				w_CCwave[j]=w_Cumresults[n-1][j]
+				//w_Cumresults[n-1][j]*=-1
+				w_CCwave[j] = -w_Cumresults[n-1][j]
 				j += 1
 		while (j<gTrainStim)
-	
+		
+		w_Cumresults[n-1][,*] *= -1
+		w_SyncCumresults[n-1][,*] *= -1
+		w_ASyncCumresults[n-1][,*] *= -1
+		
 		ControlInfo /W=NeuroBunny checkAsyncTRAIN
 		if (V_Value==1)
 			if(gTrainStim>(gBackExtrN+4))
@@ -1966,6 +1991,40 @@ Function/S get_protocolname(gTheWave_str)
 	sscanf gTheWave_str, "%*[^_]%*[_]%[^_]", p
 	return p
 
+End
+
+//New version to get protocolname using RegEx matching -AdrianGR
+//RegEx pattern can be optionally supplied when calling, but note that there should only be one capture group in the pattern
+Function/S get_protocolname2(gTheWave_str, [regExPattern])
+	String gTheWave_str
+	String regExPattern
+	if(ParamIsDefault(regExPattern))
+		regExPattern = "^x\d{1}X(.+)_\d{1}_\d{1}_\d{3}_\d{1}_.+$"	//If RegEx pattern has not been supplied, default to this (made based on test string "x2X20Hz_50_9s_1_1_001_1_I-mon")
+	endif
+	string p
+	
+	SplitString/E=regExPattern gTheWave_str, p
+	if(V_flag != 1)
+		p = get_protocolname(gTheWave_str)								//If not exactly one match was found, default to old version of get_protocolname
+	endif
+	
+	return p
+End
+
+// Extract frequency information from string -AdrianGR
+Function getStringFreqssssad(inString)
+	String inString
+	String regExPattern = "([0-9]{1,3})(.?)([Hh]z)" //Matches e.g. "20Hz", "20 Hz", "200_hz" etc.
+	String outFreq = ""
+	
+	SplitString/E=regExPattern inString, outFreq
+	if(V_flag==3)
+		print("Extracted frequency is: "+outFreq+" Hz")
+		return str2num(outFreq)
+	else
+		print("Could not extract frequency, defaulted to 50 Hz")
+		return 50
+	endif
 End
 
 
@@ -2118,28 +2177,28 @@ Function Trains_Amp()
 	if (WaveExists('TrainAmp_fromInitBaseline')==0)		//Wave for saving Amplitudes to level of end of previous pulse //-AdrianGR
 		Make/N=(1,cols) 'TrainAmp_fromInitBaseline'
 	endif
-	if (WaveExists('TrainAmp_ASyncAUC')==0)
+	if (WaveExists('TrainAmp_ASyncAUC')==0)		//Wave for saving asyncronous AUC (aka. async. 'charge') for each pulse -AdrianGR
 		Make/N=(1,cols) 'TrainAmp_ASyncAUC'
 	endif
-	if (WaveExists('TrainAmp_ASyncLineX')==0)		//Wave for saving async release X-positions //-AdrianGR
+	if (WaveExists('TrainAmp_ASyncLineX')==0)		//Wave for saving async. release X-coordinates -AdrianGR
 		Make/N=(1,cols+1) 'TrainAmp_ASyncLineX'
 	endif
-	if (WaveExists('TrainAmp_ASyncLineY')==0)		//Wave for saving async release Y-positions //-AdrianGR
+	if (WaveExists('TrainAmp_ASyncLineY')==0)		//Wave for saving async. release Y-coordinates -AdrianGR
 		Make/N=(1,cols+1) 'TrainAmp_ASyncLineY'
 	endif
-	if (WaveExists('TrainAmp_SyncAUC')==0)
+	if (WaveExists('TrainAmp_SyncAUC')==0)			//Wave for saving syncronous AUC (aka. sync. 'charge') for each pulse -AdrianGR
 		Make/N=(1,cols) 'TrainAmp_SyncAUC'
 	endif
-	if (WaveExists('TrainAmp_baselineX')==0)
+	if (WaveExists('TrainAmp_baselineX')==0)		//Wave for saving baseline X-coordinates -AdrianGR
 		Make/N=(1,cols+1) 'TrainAmp_baselineX'
 	endif
-	if (WaveExists('TrainAmp_baselineY')==0)
+	if (WaveExists('TrainAmp_baselineY')==0)		//Wave for saving baseline Y-coordinates -AdrianGR
 		Make/N=(1,cols+1) 'TrainAmp_baselineY'
 	endif
-	if (WaveExists('TrainAmp_ASyncAUC_cumulative')==0)
+	if (WaveExists('TrainAmp_ASyncAUC_cumulative')==0)	//Wave for saving cumulative async. AUC -AdrianGR
 		Make/N=(1,cols) 'TrainAmp_ASyncAUC_cumulative'
 	endif
-	if (WaveExists('TrainAmp_SyncAUC_cumulative')==0)
+	if (WaveExists('TrainAmp_SyncAUC_cumulative')==0)	//Wave for saving cumulative sync. AUC -AdrianGR
 		Make/N=(1,cols) 'TrainAmp_SyncAUC_cumulative'
 	endif
 	
@@ -2152,9 +2211,6 @@ Function Trains_Amp()
 		Make/D root:WorkData:W_fitConstants
 	endif
 	
-	if(WaveExists(root:WorkData:w_tempAUC)==0)	//-AdrianGR
-		Make/D/N=(1,cols) root:WorkData:w_tempAUC
-	endif
 	
 	wave/Z W_coef=root:WorkData:W_coef, W_fitConstants=root:WorkData:W_fitConstants
 	wave/Z/T experimentwave=root:experimentwave
@@ -2180,7 +2236,6 @@ Function Trains_Amp()
 	Wave w_baselineX = root:Results:TrainAmp_baselineX
 	Wave w_baselineY = root:Results:TrainAmp_baselineY
 	Wave w_resultsTrainAmp_SyncAUC = root:Results:TrainAmp_SyncAUC
-	Wave w_tempAUC = root:WorkData:w_tempAUC
 	Wave w_resultsTrainAmp_ASyncAUC_cumulative = root:Results:TrainAmp_ASyncAUC_cumulative
 	Wave w_resultsTrainAmp_SyncAUC_cumulative = root:Results:TrainAmp_SyncAUC_cumulative
 	
@@ -2188,6 +2243,7 @@ Function Trains_Amp()
 	Wave w_
 	
 	Variable avgT = 0.001	//define length of time interval for averaging, e.g. 2 ms -AdrianGR
+	Variable avgT2 = avgT//*5 //slightly longer interval for initial and final baseline -AdrianGR
 	
 	n=DimSize(w_resultsSync,0)+1
 	Redimension/N=(n,-1) w_resultsSync, w_resultsAll, w_resultsDel, w_resultsCorr
@@ -2196,23 +2252,25 @@ Function Trains_Amp()
 	Redimension/N=(n,-1) w_resultsTrainAmp_fromInitBaseline, w_resultsTrainAmp_ASyncAUC, w_resultsTrainAmp_ASyncLineX, w_resultsTrainAmp_ASyncLineY, w_baselineX, w_baselineY, w_resultsTrainAmp_SyncAUC
 	Redimension/N=(n,-1) w_resultsTrainAmp_ASyncAUC_cumulative, w_resultsTrainAmp_SyncAUC_cumulative
 	
-	BlankArtifactInTrain(w_temp,x0,x1,gTrainfreq,gTrainStim)
+	BlankArtifactInTrain(w_temp,x0,x1,gTrainfreq,gTrainStim,AverageT=avgT)
 	n -= 1
 	j=0
 	
 	SetDataFolder root:WorkData:
 	
-	WaveStats/Q/M=1/R=(pnt2x(w_temp,numpnts(w_temp)-1)-avgT,pnt2x(w_temp,numpnts(w_temp)-1)) w_temp //Averaging over last avgT to get final baseline (at end of wave) -AdrianGR
+	WaveStats/Q/M=1/R=(pnt2x(w_temp, numpnts(w_temp)-1)-avgT2, pnt2x(w_temp,numpnts(w_temp)-1)) w_temp //Averaging over avgT2 to get final baseline (at end of wave) -AdrianGR
 	post_pulse_baseline = V_avg
 	print "post_pulse_baseline =	", post_pulse_baseline
 	
-	WaveStats/Q/M=1/R=(x0-avgT,x0) w_temp	//Averaging over avgT to get initial baseline (just before train starts) -AdrianGR
+	WaveStats/Q/M=1/R=(x0-avgT2, x0) w_temp	//Averaging over avgT2 to get initial baseline (just before train starts) -AdrianGR
 	Init_baseline = V_avg
 	print "Init_baseline =	", Init_baseline
 	
 	Variable x0_cache = x0
 	Variable x1_cache = x1
 	Variable j_cache = j
+	
+	//w_temp = w_temp-Init_baseline
 	
 	
 	DeleteAnnotations/W=Experiments/A //Deletes any previous tags (or other annotations) on the graph -AdrianGR
@@ -2320,16 +2378,18 @@ Function Trains_Amp()
 	
 	
 	//New section replacing the old one from above. Lacks fitting. -AdrianGR
-	x0 = x0_cache
-	x1 = x1_cache
+	x0 = x0_cache; x1 = x1_cache										//Reset x0 and x1 (only necessary if they are changed before this section starts) -AdrianGR
 	Variable x0s, x1s
 	for (s=0; s<gTrainStim; s+=1)
-		//break
 		x0s = x0 + s/gTrainfreq
 		x1s = x1 + s/gTrainfreq
-		WaveStats/Q/M=1/R=(x0s-avgT,x0s) w_temp				//averaging over avgT (to calculate last sustained level) -AdrianGR
+		if (s==0)
+			WaveStats/Q/M=1/R=(x0s-avgT2,x0s) w_temp				//Average over avgT2 (only for first pulse) -AdrianGR
+		else
+			WaveStats/Q/M=1/R=(x0s-avgT,x0s) w_temp				//Average over avgT (to calculate last sustained level) -AdrianGR
+		endif
 		baseline = V_avg
-		WaveStats/Q/M=1/R=(x1s,x0s+1/gTrainfreq) w_temp
+		WaveStats/Q/M=1/R=(x1s,x0s+1/gTrainfreq) w_temp			//Get pulse minimum (peak) -AdrianGR
 		Init_amp = V_min
 		w_resultsAll[n][s] = Init_Amp - Init_baseline			//Save full amplitude to zero
 		w_resultsDel[n][s] = V_minLoc - x0s						//Save delay from start of artefact to peak 							
@@ -2337,24 +2397,28 @@ Function Trains_Amp()
 		
 		w_resultsTrainAmp_fromInitBaseline[n][s] = Init_amp - Init_baseline	//Amplitude from baseline as defined above
 		
-		w_resultsTrainAmp_ASyncLineX[n][s] = x0s									//Saving X-coordinates for async release
-		w_resultsTrainAmp_ASyncLineY[n][s] = w_temp(x0s)							//Saving Y-coordinates for async release
-		if (s == gTrainStim-1)															//Necessary to also save last point
+		w_resultsTrainAmp_ASyncLineX[n][s] = x0s									//Save X-coordinates for async release -AdrianGR
+		w_resultsTrainAmp_ASyncLineY[n][s] = w_temp(x0s)							//Save Y-coordinates for async release -AdrianGR
+		if (s == gTrainStim-1)															//if-statement is necessary to also save last point -AdrianGR
 			w_resultsTrainAmp_ASyncLineX[n][s+1] = x0s+1/gTrainfreq
-			w_resultsTrainAmp_ASyncLineY[n][s+1] = w_temp(x0s+1/gTrainfreq)
+			//w_resultsTrainAmp_ASyncLineY[n][s+1] = w_temp(x0s+1/gTrainfreq)
+			w_resultsTrainAmp_ASyncLineY[n][s] = mean(w_temp,x0s-avgT,x0s)		//TODO: would it be reasonable to take an average instead? -AdrianGR
 		endif
-		//w_resultsTrainAmp_ASyncLineY[n][s] = mean(w_temp,x0s-avgT,x0s)		//TODO: not sure if it is reasonable to take an average instead(?) -AdrianGR
+		
 	endfor
 	
-	//This section calculates AUCs, pretty much. -AdrianGR
-	Duplicate/O w_temp, w_temp2
-	w_temp2 = w_temp2 - Init_baseline
-	Duplicate/O/RMD=[n][,*] w_resultsTrainAmp_ASyncLineX, w_tempASyncX
-	Duplicate/O/RMD=[n][,*] w_resultsTrainAmp_ASyncLineY, w_tempASyncY
-	x0 = x0_cache
-	x1 = x1_cache
+	
+	//This section calculates AUCs/'charge', pretty much. -AdrianGR
+	Duplicate/O w_temp, w_temp2														//Duplicate wave so we can subtract Init_baseline
+	w_temp2 = w_temp2 - Init_baseline												//Subtract Init_baseline
+	//Duplicate/O/RMD=[n][,*] w_resultsTrainAmp_ASyncLineX, w_tempASyncX
+	//Duplicate/O/RMD=[n][,*] w_resultsTrainAmp_ASyncLineY, w_tempASyncY
+	x0 = x0_cache; x1 = x1_cache														//Reset x0 and x1 (only necessary if they are changed before this section starts) -AdrianGR
 	for (s=0; s<gTrainStim; s+=1)
 		//break
+		Duplicate/O/RMD=[n][s,s+1] w_resultsTrainAmp_ASyncLineX, w_tempASyncX
+		Duplicate/O/RMD=[n][s,s+1] w_resultsTrainAmp_ASyncLineY, w_tempASyncY
+		//w_tempASyncY = w_tempASyncY - Init_baseline
 		Make/O/D/N=(2) w_tempX
 		w_tempX[0] = x1+s/gTrainfreq
 		w_tempX[1] = x0+(s+1)/gTrainfreq
@@ -2365,8 +2429,8 @@ Function Trains_Amp()
 		w_tempY = w_tempY - Init_baseline
 		Variable ASyncArea = areaXY(w_tempX, w_tempY, w_tempX[0], w_tempX[1])
 		
-		w_resultsTrainAmp_ASyncAUC[n][s] = ASyncArea
-		w_resultsTrainAmp_SyncAUC[n][s] = syncPlusASyncArea - ASyncArea
+		w_resultsTrainAmp_ASyncAUC[n][s] = abs(ASyncArea)
+		w_resultsTrainAmp_SyncAUC[n][s] = abs(syncPlusASyncArea - ASyncArea)
 	endfor
 	KillWaves w_tempASyncX, w_tempASyncY, w_tempX, w_tempY
 	
@@ -2396,7 +2460,7 @@ Function Trains_Amp()
 	
 	print "n =	", n
 	w_resultsExp[n]=experimentwave[gWaveindex]			//Save experiment name for future reference
-	w_resultsPro[n]=get_protocolname(gTheWave)			//Save name of the protocol of the analyzed series
+	w_resultsPro[n]=get_protocolname2(gTheWave)			//Save name of the protocol of the analyzed series
 
 //	ControlInfo /W=NeuroBunny checkAsyncTRAIN
 //		if (V_Value==1)
@@ -2411,7 +2475,18 @@ Function Trains_Amp()
 		Variable/G gCursorA=x0, gCursorB=x1					// Fixed cursors 
 	endif
 	
-
+	
+	if(1==0)
+		SetDataFolder root:Results:
+		transposeWaveMake(TrainAmp_All)
+		String refWaveList = "root:Results:TrainAmp_All;root:Results:TrainAmp_corrected;root:Results:TrainAmp_Delay;root:Results:TrainAmp_fromInitBaseline;root:Results:TrainAmp_Sync;root:Results:TrainAmp_CAll;root:Results:TrainAmp_CCum;root:Results:TrainAmp_CSync;root:Results:TrainAmp_CSyncCum;root:Results:TrainAmp_CASync;root:Results:TrainAmp_CASyncCum"
+		Make/O/WAVE refWave = ListToWaveRefWave(refWaveList)
+		
+		Concatenate/O/NP=1 {refWave}, w_resSummaryTest
+	endif
+	
+	
+	
 	
 	if(dimsize(root:Results:TrainAmp_All,1)==2)
 	
@@ -3179,11 +3254,15 @@ Function InterpolateArtifact(w,x0,x1)
 End
 
 
-Function BlankArtifactInTrain(w,x0,x1,freq,num_stim)
+Function BlankArtifactInTrain(w,x0,x1,freq,num_stim,[AverageT]) //Added AverageT as optional parameter -AdrianGR
 	wave w
 	variable x0,x1 //x-coordinates of first artifact
 	variable freq,num_stim
-	variable i, AverageT=0.001, TempAverage
+	variable AverageT
+	if (ParamIsDefault(AverageT))
+		AverageT = 0.001
+	endif
+	variable i, TempAverage
 	
 	for(i=0; i<num_stim; i+=1)
 		//WaveStats/Q/M=1/R=(x0+i/freq-AverageT,x0+i/freq) w
@@ -3606,6 +3685,9 @@ Function procMenuNB(ctrlName) : ButtonControl
 			SetAxis /Z/A left
  			SetAxis /Z/A bottom
  			SetAxis /Z/A/R right
+			break
+		case "ctrlBLstartToA":
+			BaselineStartToA()
 			break
 	endswitch
 End		
@@ -4067,4 +4149,157 @@ Function ExportWaves()
 	SaveData/I/D=1/L=1
 End
 
+//Just for testing purposes -AdrianGR
+Function displayGraphV1(inWave, [rowStart, rowEnd])
+	Wave inWave
+	Variable rowStart, rowEnd
+	if(ParamIsDefault(rowStart))
+		rowStart = 0
+	endif
+	if(ParamIsDefault(rowEnd))
+		rowEnd = DimSize(inWave,0)
+	endif
+	
+	//KillWindow/Z dGraphV1
+	Display/N=dGraphV1
+	
+	Variable i
+	for(i=rowStart; i<=rowEnd; i+=1)
+		AppendToGraph inWave[i][,*]
+	endfor
+	
+	ModifyGraph mode=3
+	
+	ModifyGraph/Z rgb[0]=(0,0,0)
+	ModifyGraph/Z rgb[1]=(3,52428,1)
+	ModifyGraph/Z rgb[2]=(1,12815,52428)
+	ModifyGraph/Z rgb[3]=(52428,1,41942)
+	ModifyGraph/Z rgb[4]=(65535,21845,0)
+	Legend ""
+End
 
+//Creates transposed wave (with suffix _T) of input wave -AdrianGR
+Function transposeWaveMake(inWave)
+	Wave inWave
+	Variable rows = DimSize(inWave,1) 					//Number of columns in inWave -> rows in outWave
+	Variable cols = DimSize(inWave,0)					//Number of rows in inWave -> columns in outWave
+	String outWaveName = NameOfWave(inWave)+"_T"
+	Make/O/N=(rows,cols) $outWaveName/WAVE=w
+	//Wave outWave = $outWaveName
+	w[][] = inWave[q][p]									//Transpose
+End
+
+//Returns transposed wave of input wave -AdrianGR
+Function/WAVE transposeWave(inWave)
+	Wave inWave
+	Variable rows = DimSize(inWave,1) 					//Number of columns in inWave -> rows in outWave
+	Variable cols = DimSize(inWave,0)					//Number of rows in inWave -> columns in outWave
+	//String outWaveName = NameOfWave(inWave)+"_T"
+	//Make/O/N=(rows,cols) $outWaveName
+	//Wave outWave = $outWaveName
+	//outWave[][] = inWave[q][p]
+	
+	Make/FREE/O/N=(rows,cols) outWave
+	outWave[][] = inWave[q][p]							//Transpose
+	
+	return outWave
+End
+
+//testing -AdrianGR
+Function testFunc69()
+	Make/WAVE/O/N=(3) w_testRef2
+	w_testRef2[0] = root:Results:TrainAmp_CASync
+	w_testRef2[1] = root:Results:TrainAmp_CSync
+	w_testRef2[2] = root:Results:TrainAmp_Delay
+	Make/WAVE/O/N=(3) w_testRef2T
+	w_testRef2T = transposeWaveRefWaves(w_testRef2)
+	
+	Wave mordi = w_testRef2[2]
+	print mordi[1][2]
+	Wave mordi = w_testRef2T[2]
+	print NameOfWave(mordi), mordi[1][2]
+End
+
+Function/WAVE transposeWaveRefWaves(inRefWave)
+	Wave/WAVE inRefWave
+	//Duplicate inRefWave, $"inRefWave_dup"
+	Variable numWaves = DimSize(inRefWave,0)
+	Variable rows, cols
+	String TWaveName
+	
+	Make/WAVE/O/N=(numWaves) tempRefWave
+	
+	Variable i
+	for(i=0; i<numWaves; i+=1)
+		TWaveName = NameOfWave(inRefWave[i])+"_T"
+		Wave tempWave = inRefWave[i]
+		rows = DimSize(tempWave,1)
+		cols = DimSize(tempWave,0)
+		
+		Make/O/N=(rows,cols) $TWaveName///WAVE=w
+		Wave w = $TWaveName
+		w[][] = tempWave[q][p]
+		tempRefWave[i] = w
+		print w[0][0], w[0][1], w[0][2], "at i=", i
+		WaveClear w
+	endfor
+	
+	//print "numWaves=", numWaves, "i=", i
+	
+	//Make/O tempRefWave2
+	//tempRefWave2[] = tempRefWave[p]
+	//Wave bingo
+	//bingo = tempRefWave[2]
+	//print bingo[1][2]
+	
+	//Variable rows = DimSize(tempWave,1) 					//Number of columns in inWave -> rows in outWave
+	//Variable cols = DimSize(tempWave,0)					//Number of rows in inWave -> columns in outWave
+	//String outWaveName = NameOfWave(inWave)+"_T"
+	//Make/O/N=(rows,cols) $outWaveName
+	//Wave outWave = $outWaveName
+	//outWave[][] = inWave[q][p]
+	
+	//Make/FREE/O/N=(rows,cols) outWave
+	//outWave[][] = inRefWave[q][p]							//Transpose
+	
+	return tempRefWave
+End
+
+Function/WAVE mTransp(inWave)
+	Wave/WAVE inWave
+	Variable rows = DimSize(inWave, 1)
+	Variable cols = DimSize(inWave, 0)
+	
+	Make/FREE/O/N=(rows,cols) outWave
+	
+	Variable i, j
+	for(i=0; i<rows; i+=1)
+		for(j=0; j<cols; j+=1)
+			outWave[i][j] = inWave[j][i]
+		endfor
+	endfor
+		
+	return outWave
+End
+
+//Testing -AdrianGR
+Function testTranspose()
+	SetDataFolder root:Results:
+	Concatenate/O/NP=1 {transposeWave(TrainAmp_CSyncCum), transposeWave(TrainAmp_CASyncCum)}, w_resSummaryTest
+	
+End
+
+Function nothingAtAll()
+SetDataFolder root:Results:
+		
+		//String refWaveList = "TrainAmp_All;TrainAmp_corrected;TrainAmp_Delay;TrainAmp_fromInitBaseline;TrainAmp_Sync;TrainAmp_CAll;TrainAmp_CCum;TrainAmp_CSync;TrainAmp_CSyncCum;TrainAmp_CASync;TrainAmp_CASyncCum"
+		String refWaveList = "root:Results:TrainAmp_All;root:Results:TrainAmp_corrected"
+		Make/WAVE/O/N=(2) refWave = ListToWaveRefWave(refWaveList)
+		
+		Variable i=0
+		for(i=0; i<numpnts(refWave); i+=1)
+			transposeWaveMake(refWave[i])
+		endfor
+		
+		//Concatenate/O/NP=1 {refWave}, w_resSummaryTest
+End
