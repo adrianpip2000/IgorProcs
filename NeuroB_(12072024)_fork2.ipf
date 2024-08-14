@@ -2159,6 +2159,9 @@ Function Trains_Amp()
 	if (WaveExists('TrainAmp_Sync')==0)		//Wave for saving Amplitudes to last level ('synchronous')
 		Make/N=(1,cols) 'TrainAmp_Sync'
 	endif
+	if (WaveExists('TrainAmp_Sync_Norm')==0)		//Wave for saving Amplitudes to last level ('synchronous') - normalized
+		Make/N=(1,cols) 'TrainAmp_Sync_Norm'
+	endif
 	if (WaveExists('TrainAmp_All')==0)		//Wave for saving Amplitudes to baseline ('all')
 		Make/N=(1,cols) 'TrainAmp_All'
 	endif
@@ -2174,8 +2177,11 @@ Function Trains_Amp()
 	if (WaveExists('TrainAmp_corrected')==0)		//Wave for saving Amplitudes calculated from decay fitting
 		Make/N=(1,cols) 'TrainAmp_corrected'
 	endif
-	if (WaveExists('TrainAmp_fromInitBaseline')==0)		//Wave for saving Amplitudes to level of end of previous pulse //-AdrianGR
+	if (WaveExists('TrainAmp_fromInitBaseline')==0)		//Wave for saving amplitudes to level of end of previous pulse //-AdrianGR
 		Make/N=(1,cols) 'TrainAmp_fromInitBaseline'
+	endif
+	if (WaveExists('TrainAmp_fromInitBaseline_Norm')==0)		//Wave for saving normalized amplitudes to level of end of previous pulse //-AdrianGR
+		Make/N=(1,cols) 'TrainAmp_fromInitBaseline_Norm'
 	endif
 	if (WaveExists('TrainAmp_ASyncAUC')==0)		//Wave for saving asyncronous AUC (aka. async. 'charge') for each pulse -AdrianGR
 		Make/N=(1,cols) 'TrainAmp_ASyncAUC'
@@ -2221,23 +2227,25 @@ Function Trains_Amp()
 	ModifyGraph/W=Experiments lsize=1.0,rgb=(52224,52224,52224)
 	AppendToGraph/C=(0,39168,0) w_temp
 	
-	wave w_resultsSync=root:Results:TrainAmp_Sync
-	wave w_resultsAll=root:Results:TrainAmp_All
-	wave w_resultsDel=root:Results:TrainAmp_Delay
-	wave w_resultsCorr=root:Results:TrainAmp_corrected
-	wave /T w_resultsExp=root:Results:TrainExperiments
-	wave /T w_resultsPro=root:Results:TrainExperiments_protocol
+	wave w_resSync=root:Results:TrainAmp_Sync
+	wave w_resSync_Norm=root:Results:TrainAmp_Sync_Norm
+	wave w_resAll=root:Results:TrainAmp_All
+	wave w_resDel=root:Results:TrainAmp_Delay
+	wave w_resCorr=root:Results:TrainAmp_corrected
+	wave /T w_resExp=root:Results:TrainExperiments
+	wave /T w_resPro=root:Results:TrainExperiments_protocol
 	
 	//-AdrianGR
-	Wave w_resultsTrainAmp_fromInitBaseline = root:Results:TrainAmp_fromInitBaseline
-	Wave w_resultsTrainAmp_ASyncAUC = root:Results:TrainAmp_ASyncAUC
-	Wave w_resultsTrainAmp_ASyncLineX = root:Results:TrainAmp_ASyncLineX
-	Wave w_resultsTrainAmp_ASyncLineY = root:Results:TrainAmp_ASyncLineY
+	Wave w_resTrainAmp_fromInitBL = root:Results:TrainAmp_fromInitBaseline
+	Wave w_resTrainAmp_fromInitBL_Norm = root:Results:TrainAmp_fromInitBaseline_Norm
+	Wave w_resTrainAmp_ASyncAUC = root:Results:TrainAmp_ASyncAUC
+	Wave w_resTrainAmp_ASyncLineX = root:Results:TrainAmp_ASyncLineX
+	Wave w_resTrainAmp_ASyncLineY = root:Results:TrainAmp_ASyncLineY
 	Wave w_baselineX = root:Results:TrainAmp_baselineX
 	Wave w_baselineY = root:Results:TrainAmp_baselineY
-	Wave w_resultsTrainAmp_SyncAUC = root:Results:TrainAmp_SyncAUC
-	Wave w_resultsTrainAmp_ASyncAUC_cumulative = root:Results:TrainAmp_ASyncAUC_cumulative
-	Wave w_resultsTrainAmp_SyncAUC_cumulative = root:Results:TrainAmp_SyncAUC_cumulative
+	Wave w_resTrainAmp_SyncAUC = root:Results:TrainAmp_SyncAUC
+	Wave w_resTrainAmp_ASyncAUC_cumulative = root:Results:TrainAmp_ASyncAUC_cumulative
+	Wave w_resTrainAmp_SyncAUC_cumulative = root:Results:TrainAmp_SyncAUC_cumulative
 	
 	
 	Wave w_
@@ -2245,12 +2253,12 @@ Function Trains_Amp()
 	Variable avgT = 0.001	//define length of time interval for averaging, e.g. 2 ms -AdrianGR
 	Variable avgT2 = avgT//*5 //slightly longer interval for initial and final baseline -AdrianGR
 	
-	n=DimSize(w_resultsSync,0)+1
-	Redimension/N=(n,-1) w_resultsSync, w_resultsAll, w_resultsDel, w_resultsCorr
-	Redimension/N=(n) w_resultsExp, w_resultsPro
+	n=DimSize(w_resSync,0)+1
+	Redimension/N=(n,-1) w_resSync, w_resSync_Norm, w_resAll, w_resDel, w_resCorr
+	Redimension/N=(n) w_resExp, w_resPro
 	//-AdrianGR
-	Redimension/N=(n,-1) w_resultsTrainAmp_fromInitBaseline, w_resultsTrainAmp_ASyncAUC, w_resultsTrainAmp_ASyncLineX, w_resultsTrainAmp_ASyncLineY, w_baselineX, w_baselineY, w_resultsTrainAmp_SyncAUC
-	Redimension/N=(n,-1) w_resultsTrainAmp_ASyncAUC_cumulative, w_resultsTrainAmp_SyncAUC_cumulative
+	Redimension/N=(n,-1) w_resTrainAmp_fromInitBL, w_resTrainAmp_fromInitBL_Norm, w_resTrainAmp_ASyncAUC, w_resTrainAmp_ASyncLineX, w_resTrainAmp_ASyncLineY, w_baselineX, w_baselineY, w_resTrainAmp_SyncAUC
+	Redimension/N=(n,-1) w_resTrainAmp_ASyncAUC_cumulative, w_resTrainAmp_SyncAUC_cumulative
 	
 	BlankArtifactInTrain(w_temp,x0,x1,gTrainfreq,gTrainStim,AverageT=avgT)
 	n -= 1
@@ -2290,24 +2298,24 @@ Function Trains_Amp()
 		//WaveStats/Q/M=1/R=(x1,x0+(j+1)/gTrainfreq) w_temp
 		WaveStats/Q/M=1/R=(x1,x0+1/gTrainfreq) w_temp
 		Init_amp = V_min
-		w_resultsAll[n][j] = Init_Amp - Init_baseline			//Save full amplitude to zero
-		w_resultsDel[n][j] = V_minLoc - x0						//Save delay from start of artefact to peak 
+		w_resAll[n][j] = Init_Amp - Init_baseline			//Save full amplitude to zero
+		w_resDel[n][j] = V_minLoc - x0						//Save delay from start of artefact to peak 
 		//wavestats/Q/M=1/R=(x0,x1) w_temp
 		//baseline=V_min
 		WaveStats/Q/M=1/R=(x0-avgT,x0) w_temp					//averaging over avgT (to calculate last sustained level) -AdrianGR
 		baseline = V_avg
 		amp = Init_amp - baseline									//Save evoked amplitude (relative to last sustained level).
-		w_resultsSync[n][j] = amp
+		w_resSync[n][j] = amp
 		
 		
 		//-AdrianGR //TODO: something wrong here?
 		WaveStats/Q/R=(x0-avgT,x0) w_temp								//Getting average from final avgT of previous pulse
 		Variable preStimBaseline = V_avg
 		WaveStats/Q/R=(x1,x0+1/gTrainfreq) w_temp
-		w_resultsTrainAmp_fromInitBaseline[n][j] = V_min - preStimBaseline	//Amplitude from baseline as defined above
-		w_resultsTrainAmp_ASyncLineX[n][j] = x0								//Saving X-coordinates for tonic release
-		w_resultsTrainAmp_ASyncLineY[n][j] = w_temp(x0)					//Saving Y-coordinates for tonic release
-		//w_resultsTrainAmp_ASyncLineY[n][j] = mean(w_temp,x0-avgT,x0)	//TODO: not sure if it is reasonable to take an average instead(?) -AdrianGR
+		w_resTrainAmp_fromInitBL[n][j] = V_min - preStimBaseline	//Amplitude from baseline as defined above
+		w_resTrainAmp_ASyncLineX[n][j] = x0								//Saving X-coordinates for tonic release
+		w_resTrainAmp_ASyncLineY[n][j] = w_temp(x0)					//Saving Y-coordinates for tonic release
+		//w_resTrainAmp_ASyncLineY[n][j] = mean(w_temp,x0-avgT,x0)	//TODO: not sure if it is reasonable to take an average instead(?) -AdrianGR
 		
 		
 		
@@ -2358,16 +2366,16 @@ Function Trains_Amp()
 			
 			
 			WaveStats/Q/M=1/R=(x1,x0+1/gTrainfreq) w_temp
-			w_resultsCorr[n][j] = V_min-(W_coef[0]+W_coef[1]*exp(-((x1)-W_fitConstants[0])/W_coef[2])+W_coef[3]*exp(-((x1)-W_fitConstants[0])/W_coef[4])) //Save amplitude from second pulse on based the predicted decay of the first pulse
+			w_resCorr[n][j] = V_min-(W_coef[0]+W_coef[1]*exp(-((x1)-W_fitConstants[0])/W_coef[2])+W_coef[3]*exp(-((x1)-W_fitConstants[0])/W_coef[4])) //Save amplitude from second pulse on based the predicted decay of the first pulse
 			
-			print "w_resultsCorr[n][j]", w_resultsCorr[n][j]
+			print "w_resCorr[n][j]", w_resCorr[n][j]
 			
 			
 			x2+=1/gTrainfreq
 			
 		else
 	
-			w_resultsCorr[n][j] = (amp)
+			w_resCorr[n][j] = (amp)
 			
 		endif
 		
@@ -2391,33 +2399,36 @@ Function Trains_Amp()
 		baseline = V_avg
 		WaveStats/Q/M=1/R=(x1s,x0s+1/gTrainfreq) w_temp			//Get pulse minimum (peak) -AdrianGR
 		Init_amp = V_min
-		w_resultsAll[n][s] = Init_Amp - Init_baseline			//Save full amplitude to zero
-		w_resultsDel[n][s] = V_minLoc - x0s						//Save delay from start of artefact to peak 							
-		w_resultsSync[n][s] = Init_amp - baseline				//Save evoked amplitude (relative to last sustained level).
+		w_resAll[n][s] = Init_Amp - Init_baseline			//Save full amplitude to zero
+		w_resDel[n][s] = V_minLoc - x0s						//Save delay from start of artefact to peak 							
+		w_resSync[n][s] = Init_amp - baseline				//Save evoked amplitude (relative to last sustained level).
 		
-		w_resultsTrainAmp_fromInitBaseline[n][s] = Init_amp - Init_baseline	//Amplitude from baseline as defined above
+		w_resTrainAmp_fromInitBL[n][s] = Init_amp - Init_baseline	//Amplitude from baseline as defined above
 		
-		w_resultsTrainAmp_ASyncLineX[n][s] = x0s									//Save X-coordinates for async release -AdrianGR
-		w_resultsTrainAmp_ASyncLineY[n][s] = w_temp(x0s)							//Save Y-coordinates for async release -AdrianGR
+		w_resTrainAmp_ASyncLineX[n][s] = x0s									//Save X-coordinates for async release -AdrianGR
+		w_resTrainAmp_ASyncLineY[n][s] = w_temp(x0s)							//Save Y-coordinates for async release -AdrianGR
 		if (s == gTrainStim-1)															//if-statement is necessary to also save last point -AdrianGR
-			w_resultsTrainAmp_ASyncLineX[n][s+1] = x0s+1/gTrainfreq
-			//w_resultsTrainAmp_ASyncLineY[n][s+1] = w_temp(x0s+1/gTrainfreq)
-			w_resultsTrainAmp_ASyncLineY[n][s] = mean(w_temp,x0s-avgT,x0s)		//TODO: would it be reasonable to take an average instead? -AdrianGR
+			w_resTrainAmp_ASyncLineX[n][s+1] = x0s+1/gTrainfreq
+			//w_resTrainAmp_ASyncLineY[n][s+1] = w_temp(x0s+1/gTrainfreq)
+			w_resTrainAmp_ASyncLineY[n][s] = mean(w_temp,x0s-avgT,x0s)		//TODO: would it be reasonable to take an average instead? -AdrianGR
 		endif
 		
 	endfor
+	
+	Wave w_resTrainAmp_fromInitBL_Norm = normalize2DWave(w_resTrainAmp_fromInitBL)
+	Wave w_resSync_Norm = normalize2DWave(w_resSync)
 	
 	
 	//This section calculates AUCs/'charge', pretty much. -AdrianGR
 	Duplicate/O w_temp, w_temp2														//Duplicate wave so we can subtract Init_baseline
 	w_temp2 = w_temp2 - Init_baseline												//Subtract Init_baseline
-	//Duplicate/O/RMD=[n][,*] w_resultsTrainAmp_ASyncLineX, w_tempASyncX
-	//Duplicate/O/RMD=[n][,*] w_resultsTrainAmp_ASyncLineY, w_tempASyncY
+	//Duplicate/O/RMD=[n][,*] w_resTrainAmp_ASyncLineX, w_tempASyncX
+	//Duplicate/O/RMD=[n][,*] w_resTrainAmp_ASyncLineY, w_tempASyncY
 	x0 = x0_cache; x1 = x1_cache														//Reset x0 and x1 (only necessary if they are changed before this section starts) -AdrianGR
 	for (s=0; s<gTrainStim; s+=1)
 		//break
-		Duplicate/O/RMD=[n][s,s+1] w_resultsTrainAmp_ASyncLineX, w_tempASyncX
-		Duplicate/O/RMD=[n][s,s+1] w_resultsTrainAmp_ASyncLineY, w_tempASyncY
+		Duplicate/O/RMD=[n][s,s+1] w_resTrainAmp_ASyncLineX, w_tempASyncX
+		Duplicate/O/RMD=[n][s,s+1] w_resTrainAmp_ASyncLineY, w_tempASyncY
 		//w_tempASyncY = w_tempASyncY - Init_baseline
 		Make/O/D/N=(2) w_tempX
 		w_tempX[0] = x1+s/gTrainfreq
@@ -2429,38 +2440,38 @@ Function Trains_Amp()
 		w_tempY = w_tempY - Init_baseline
 		Variable ASyncArea = areaXY(w_tempX, w_tempY, w_tempX[0], w_tempX[1])
 		
-		w_resultsTrainAmp_ASyncAUC[n][s] = abs(ASyncArea)
-		w_resultsTrainAmp_SyncAUC[n][s] = abs(syncPlusASyncArea - ASyncArea)
+		w_resTrainAmp_ASyncAUC[n][s] = abs(ASyncArea)
+		w_resTrainAmp_SyncAUC[n][s] = abs(syncPlusASyncArea - ASyncArea)
 	endfor
 	KillWaves w_tempASyncX, w_tempASyncY, w_tempX, w_tempY
 	
 	
-	w_resultsTrainAmp_ASyncAUC_cumulative[n][0] = w_resultsTrainAmp_ASyncAUC[n][0]
-	//w_resultsTrainAmp_ASyncAUC_cumulative[n][1,*] = w_resultsTrainAmp_ASyncAUC[n][q] + w_resultsTrainAmp_ASyncAUC_cumulative[n][q-1]	//this line does the same as the for-loop below -AdrianGR
+	w_resTrainAmp_ASyncAUC_cumulative[n][0] = w_resTrainAmp_ASyncAUC[n][0]
+	//w_resTrainAmp_ASyncAUC_cumulative[n][1,*] = w_resTrainAmp_ASyncAUC[n][q] + w_resTrainAmp_ASyncAUC_cumulative[n][q-1]	//this line does the same as the for-loop below -AdrianGR
 	Variable h
-	for(h=1; h<DimSize(w_resultsTrainAmp_ASyncAUC,1); h+=1)
-		w_resultsTrainAmp_ASyncAUC_cumulative[n][h] = w_resultsTrainAmp_ASyncAUC[n][h] + w_resultsTrainAmp_ASyncAUC_cumulative[n][h-1]
+	for(h=1; h<DimSize(w_resTrainAmp_ASyncAUC,1); h+=1)
+		w_resTrainAmp_ASyncAUC_cumulative[n][h] = w_resTrainAmp_ASyncAUC[n][h] + w_resTrainAmp_ASyncAUC_cumulative[n][h-1]
 	endfor
-	w_resultsTrainAmp_SyncAUC_cumulative[n][0] = w_resultsTrainAmp_SyncAUC[n][0]
-	//w_resultsTrainAmp_SyncAUC_cumulative[n][1,*] = w_resultsTrainAmp_SyncAUC[n][q] + w_resultsTrainAmp_SyncAUC_cumulative[n][q-1]		//this line does the same as the for-loop below -AdrianGR
-	for(h=1; h<DimSize(w_resultsTrainAmp_SyncAUC,1); h+=1)
-		w_resultsTrainAmp_SyncAUC_cumulative[n][h] = w_resultsTrainAmp_SyncAUC[n][h] + w_resultsTrainAmp_SyncAUC_cumulative[n][h-1]
+	w_resTrainAmp_SyncAUC_cumulative[n][0] = w_resTrainAmp_SyncAUC[n][0]
+	//w_resTrainAmp_SyncAUC_cumulative[n][1,*] = w_resTrainAmp_SyncAUC[n][q] + w_resTrainAmp_SyncAUC_cumulative[n][q-1]		//this line does the same as the for-loop below -AdrianGR
+	for(h=1; h<DimSize(w_resTrainAmp_SyncAUC,1); h+=1)
+		w_resTrainAmp_SyncAUC_cumulative[n][h] = w_resTrainAmp_SyncAUC[n][h] + w_resTrainAmp_SyncAUC_cumulative[n][h-1]
 	endfor
 	
-	print "Total asynchronous release AUC:	", w_resultsTrainAmp_ASyncAUC_cumulative[n][INF]
-	print "Total synchronous release AUC:	", w_resultsTrainAmp_SyncAUC_cumulative[n][INF]
+	print "Total asynchronous release AUC:	", w_resTrainAmp_ASyncAUC_cumulative[n][INF]
+	print "Total synchronous release AUC:	", w_resTrainAmp_SyncAUC_cumulative[n][INF]
 	
 	
-	w_baselineX[n][,*] = w_resultsTrainAmp_ASyncLineX[n][q]
+	w_baselineX[n][,*] = w_resTrainAmp_ASyncLineX[n][q]
 	w_baselineY[n][,*] = Init_baseline
 	AppendToGraph/W=Experiments/C=(0,55555,55555) w_baselineY[n][,*] vs w_baselineX[n][,*] //In effect shows Init_baseline on graph -AdrianGR
 	
-	AppendToGraph/W=Experiments/C=(0,0,55555) w_resultsTrainAmp_ASyncLineY[n][,*] vs w_resultsTrainAmp_ASyncLineX[n][,*] //-AdrianGR
+	AppendToGraph/W=Experiments/C=(0,0,55555) w_resTrainAmp_ASyncLineY[n][,*] vs w_resTrainAmp_ASyncLineX[n][,*] //-AdrianGR
 	
 	
 	print "n =	", n
-	w_resultsExp[n]=experimentwave[gWaveindex]			//Save experiment name for future reference
-	w_resultsPro[n]=get_protocolname2(gTheWave)			//Save name of the protocol of the analyzed series
+	w_resExp[n]=experimentwave[gWaveindex]			//Save experiment name for future reference
+	w_resPro[n]=get_protocolname2(gTheWave)			//Save name of the protocol of the analyzed series
 
 //	ControlInfo /W=NeuroBunny checkAsyncTRAIN
 //		if (V_Value==1)
@@ -4178,7 +4189,7 @@ Function displayGraphV1(inWave, [rowStart, rowEnd])
 	Legend ""
 End
 
-//Creates transposed wave (with suffix _T) of input wave -AdrianGR
+// Creates transposed wave (with suffix _T) of input wave -AdrianGR
 Function transposeWaveMake(inWave)
 	Wave inWave
 	Variable rows = DimSize(inWave,1) 					//Number of columns in inWave -> rows in outWave
@@ -4189,7 +4200,7 @@ Function transposeWaveMake(inWave)
 	w[][] = inWave[q][p]									//Transpose
 End
 
-//Returns transposed wave of input wave -AdrianGR
+// Returns transposed wave of input wave -AdrianGR
 Function/WAVE transposeWave(inWave)
 	Wave inWave
 	Variable rows = DimSize(inWave,1) 					//Number of columns in inWave -> rows in outWave
@@ -4220,6 +4231,7 @@ Function testFunc69()
 	print NameOfWave(mordi), mordi[1][2]
 End
 
+//Does not work properly at this point
 Function/WAVE transposeWaveRefWaves(inRefWave)
 	Wave/WAVE inRefWave
 	//Duplicate inRefWave, $"inRefWave_dup"
@@ -4302,4 +4314,53 @@ SetDataFolder root:Results:
 		endfor
 		
 		//Concatenate/O/NP=1 {refWave}, w_resSummaryTest
+End
+
+
+
+// Function to normalize a wave -AdrianGR
+// Optional parameters can be supplied, otherwise it defaults to normalizing rows relative to first column and naming new wave with suffix "_Norm"
+// Returns reference to the newly created normalized wave
+Function/WAVE normalize2DWave(inWave, [normDim, outWaveName, normIndex])
+	Wave inWave
+	Variable normDim										//Which dimension to normalize along
+	String outWaveName
+	Variable normIndex									//Which row/column index to normalize relative to
+	if(ParamIsDefault(normDim))						//Default to normalizing along rows if normDim has not been supplied
+		normDim = 0
+	endif
+	if(ParamIsDefault(outWaveName))					//Default name is to add "_Norm" as suffix to the name of the input wave
+		outWaveName = NameOfWave(inWave)+"_Norm"
+	endif
+	if(ParamIsDefault(normIndex))						//Default to normalizing relative to first row/column
+		normIndex = 0
+	endif
+	
+	DFREF saveDFR = GetDataFolderDFR()				//Save initial data folder
+	SetDataFolder GetWavesDataFolder(inWave,1)		//Set data folder to that of the input wave
+	Duplicate/O inWave, $outWaveName					//Make a duplicate in that same folder
+	Wave outWave = $outWaveName						//Create reference to the duplicate
+	SetDataFolder saveDFR								//Go back to initial data folder
+	
+	switch(normDim)
+		case 0:
+			outWave[][] = inWave[p][q]/inWave[p][normIndex]		//Does normalization along rows
+			break
+		case 1:
+			outWave[][] = inWave[p][q]/inWave[normIndex][q]		//Does normalization along columns
+			break
+		default:
+			DoAlert 0, "Could not normalize wave!"
+			outWave = NaN
+	endswitch
+	
+	return outWave
+End
+
+Function testNorm()
+	Make/O/N=(3,4) testWave = p+q+1
+	testWave[0][] = 0
+	Wave wavey = normalize2DWave(testWave)
+	Edit/K=1/W=(0,0,500,200) testWave
+	Edit/K=1/W=(0,250,500,450) wavey
 End
