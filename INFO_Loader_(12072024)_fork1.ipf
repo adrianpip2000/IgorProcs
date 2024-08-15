@@ -1026,11 +1026,11 @@ Function ButtonProc_LoadINFO(ctrlName) : ButtonControl
 	
 	String ctrlName
 	NewDataFolder/O/S root:Data
-	//Execute "LoadWave/J/W/O/K=2"
-	LoadWave/J/W/O/K=2
-	if(V_Flag==0)
-		abort
-	endif
+	Execute "LoadWave/J/W/O/K=2"
+	//LoadWave/J/W/O/K=2
+	//if(V_Flag==0)
+		//abort
+	//endif
 	
 	string version
 	Prompt version, "Format:",popup "PatchMaster;Pulse"

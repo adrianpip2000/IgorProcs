@@ -2174,6 +2174,9 @@ Function Trains_Amp()
 	if (WaveExists('TrainExperiments_protocol')==0)		//Wave for saving protocol name
 		Make/T/N=(1) 'TrainExperiments_protocol'
 	endif
+	if (WaveExists('TrainExperiments_folder')==0)		//Wave for saving file path -AdrianGR
+		Make/T/N=(1) 'TrainExperiments_folder'
+	endif
 	if (WaveExists('TrainAmp_corrected')==0)		//Wave for saving Amplitudes calculated from decay fitting
 		Make/N=(1,cols) 'TrainAmp_corrected'
 	endif
@@ -2220,6 +2223,7 @@ Function Trains_Amp()
 	
 	wave/Z W_coef=root:WorkData:W_coef, W_fitConstants=root:WorkData:W_fitConstants
 	wave/Z/T experimentwave=root:experimentwave
+	wave/Z/T folder=root:folder
 	
 	SetDataFolder root:OrigData
 	duplicate/O $gTheWave root:WorkData:$gTheWave
@@ -2234,6 +2238,7 @@ Function Trains_Amp()
 	wave w_resCorr=root:Results:TrainAmp_corrected
 	wave /T w_resExp=root:Results:TrainExperiments
 	wave /T w_resPro=root:Results:TrainExperiments_protocol
+	wave /T w_resFolder=root:Results:TrainExperiments_folder
 	
 	//-AdrianGR
 	Wave w_resTrainAmp_fromInitBL = root:Results:TrainAmp_fromInitBaseline
@@ -2255,7 +2260,7 @@ Function Trains_Amp()
 	
 	n=DimSize(w_resSync,0)+1
 	Redimension/N=(n,-1) w_resSync, w_resSync_Norm, w_resAll, w_resDel, w_resCorr
-	Redimension/N=(n) w_resExp, w_resPro
+	Redimension/N=(n) w_resExp, w_resPro, w_resFolder
 	//-AdrianGR
 	Redimension/N=(n,-1) w_resTrainAmp_fromInitBL, w_resTrainAmp_fromInitBL_Norm, w_resTrainAmp_ASyncAUC, w_resTrainAmp_ASyncLineX, w_resTrainAmp_ASyncLineY, w_baselineX, w_baselineY, w_resTrainAmp_SyncAUC
 	Redimension/N=(n,-1) w_resTrainAmp_ASyncAUC_cumulative, w_resTrainAmp_SyncAUC_cumulative
@@ -2458,8 +2463,8 @@ Function Trains_Amp()
 		w_resTrainAmp_SyncAUC_cumulative[n][h] = w_resTrainAmp_SyncAUC[n][h] + w_resTrainAmp_SyncAUC_cumulative[n][h-1]
 	endfor
 	
-	print "Total asynchronous release AUC:	", w_resTrainAmp_ASyncAUC_cumulative[n][INF]
-	print "Total synchronous release AUC:	", w_resTrainAmp_SyncAUC_cumulative[n][INF]
+	//print "Total asynchronous release AUC:\t", w_resTrainAmp_ASyncAUC_cumulative[n][INF]
+	//print "Total synchronous release AUC:\t", w_resTrainAmp_SyncAUC_cumulative[n][INF]
 	
 	
 	w_baselineX[n][,*] = w_resTrainAmp_ASyncLineX[n][q]
@@ -2470,9 +2475,12 @@ Function Trains_Amp()
 	
 	
 	print "n =	", n
+	
+	//TODO: saving stuff in block below doesn't work properly because it doesn't take into account if there are multiple sweeps -AdrianGR
 	w_resExp[n]=experimentwave[gWaveindex]			//Save experiment name for future reference
 	w_resPro[n]=get_protocolname2(gTheWave)			//Save name of the protocol of the analyzed series
-
+	w_resFolder[n]=folder[gWaveindex]
+	
 //	ControlInfo /W=NeuroBunny checkAsyncTRAIN
 //		if (V_Value==1)
 		Trains_Charge()
@@ -4160,34 +4168,6 @@ Function ExportWaves()
 	SaveData/I/D=1/L=1
 End
 
-//Just for testing purposes -AdrianGR
-Function displayGraphV1(inWave, [rowStart, rowEnd])
-	Wave inWave
-	Variable rowStart, rowEnd
-	if(ParamIsDefault(rowStart))
-		rowStart = 0
-	endif
-	if(ParamIsDefault(rowEnd))
-		rowEnd = DimSize(inWave,0)
-	endif
-	
-	//KillWindow/Z dGraphV1
-	Display/N=dGraphV1
-	
-	Variable i
-	for(i=rowStart; i<=rowEnd; i+=1)
-		AppendToGraph inWave[i][,*]
-	endfor
-	
-	ModifyGraph mode=3
-	
-	ModifyGraph/Z rgb[0]=(0,0,0)
-	ModifyGraph/Z rgb[1]=(3,52428,1)
-	ModifyGraph/Z rgb[2]=(1,12815,52428)
-	ModifyGraph/Z rgb[3]=(52428,1,41942)
-	ModifyGraph/Z rgb[4]=(65535,21845,0)
-	Legend ""
-End
 
 // Creates transposed wave (with suffix _T) of input wave -AdrianGR
 Function transposeWaveMake(inWave)
@@ -4357,10 +4337,131 @@ Function/WAVE normalize2DWave(inWave, [normDim, outWaveName, normIndex])
 	return outWave
 End
 
-Function testNorm()
-	Make/O/N=(3,4) testWave = p+q+1
-	testWave[0][] = 0
-	Wave wavey = normalize2DWave(testWave)
-	Edit/K=1/W=(0,0,500,200) testWave
-	Edit/K=1/W=(0,250,500,450) wavey
+//Useless -AdrianGR
+Function extractSweepNum(inString, [regExPattern])
+	String inString
+	String regExPattern
+	if(ParamIsDefault(regExPattern))
+		regExPattern = "^x\d{1}X.+_\d{1}_\d{1}_(\d{3})_\d{1}_.+$"	//If RegEx pattern has not been supplied, default to this (made based on test string "x0X20Hz_50_9s_1_1_001_1_I-mon")
+	endif
+	String sweepOut
+	Variable sweepOutInt
+	
+	SplitString/E=regExPattern inString, sweepOut
+	if(V_flag != 1)
+		return NaN								//If not exactly one match was found, 
+	endif
+	
+	sweepOutInt = str2num(sweepOut)
+	
+	return sweepOutInt
+End
+
+//TODO: fix this -AdrianGR
+Function extractSweepNum2(inString, [regExPattern])
+	String inString
+	String regExPattern
+	if(ParamIsDefault(regExPattern))
+		regExPattern = "^(x\d{1}X.+)_(\d{1})_(\d{1})_(\d{3})_(\d{1})_(.+)$"	//If RegEx pattern has not been supplied, default to this (made based on test string "x0X20Hz_50_9s_1_1_001_1_I-mon")
+	endif
+	String proStr, grStr, serStr, swStr, trStr, sigStr
+	Variable sweepOutInt
+	
+	SplitString/E=regExPattern inString, proStr, grStr, serStr, swStr, trStr, sigStr
+	if(V_flag != 6)
+		
+	endif
+	
+	//sweepOutInt = str2num(sweepOut)
+	
+	//return sweepOutInt
+End
+
+
+Function testShowResults()
+	DFREF saveDFR = GetDataFolderDFR()				//Save initial data folder
+	
+	SetDataFolder root:Results
+	Make/WAVE/O resultsWaveRefWave = {TrainAmp_CASyncCum, TrainAmp_CASync, TrainAmp_CSyncCum, TrainAmp_CSync, TrainAmp_Sync_Norm, TrainAmp_Sync, TrainAmp_fromInitBaseline_Norm, TrainAmp_fromInitBaseline}
+	Wave/WAVE resWRW = resultsWaveRefWave
+	
+	Variable i
+	for(i=0; i<numpnts(resWRW); i+=1)
+		Edit/K=1 resWRW[i]
+	endfor
+	
+//	Edit/K=1 root:Results:TrainAmp_CASyncCum
+//	Edit/K=1 root:Results:TrainAmp_CASync
+//	Edit/K=1 root:Results:TrainAmp_CSyncCum
+//	Edit/K=1 root:Results:TrainAmp_CSync
+//	Edit/K=1 root:Results:TrainAmp_Sync_Norm
+//	Edit/K=1 root:Results:TrainAmp_Sync
+//	Edit/K=1 root:Results:TrainAmp_fromInitBaseline_Norm
+//	Edit/K=1 root:Results:TrainAmp_fromInitBaseline
+	
+	SetDataFolder saveDFR								//Go back to initial data folder
+End
+
+//Just for testing purposes -AdrianGR
+Function displayGraphV1(inWave, [rowStart, rowEnd])
+	Wave inWave
+	Variable rowStart, rowEnd
+	if(ParamIsDefault(rowStart))
+		rowStart = 0
+	endif
+	if(ParamIsDefault(rowEnd))
+		rowEnd = DimSize(inWave,0)
+	endif
+	
+	//KillWindow/Z dGraphV1
+	Display/N=dGraphV1
+	
+	Variable i
+	for(i=rowStart; i<=rowEnd; i+=1)
+		AppendToGraph inWave[i][,*]
+	endfor
+	
+	ModifyGraph mode=3
+	
+	ModifyGraph/Z rgb[0]=(0,0,0)
+	ModifyGraph/Z rgb[1]=(3,52428,1)
+	ModifyGraph/Z rgb[2]=(1,12815,52428)
+	ModifyGraph/Z rgb[3]=(52428,1,41942)
+	ModifyGraph/Z rgb[4]=(65535,21845,0)
+	Legend ""
+End
+
+//Just for testing purposes -AdrianGR
+Function displayGraphV2(inWave, [rowStart, rowEnd])
+	Wave inWave
+	Variable rowStart, rowEnd
+	if(ParamIsDefault(rowStart))
+		rowStart = 0
+	endif
+	if(ParamIsDefault(rowEnd))
+		rowEnd = DimSize(inWave,0)
+	endif
+	
+	//NewLayout/K=1/N=aLayout
+	
+	
+	//KillWindow/Z dGraphV1
+	Display/N=dGraphV1
+	
+	Variable i
+	for(i=rowStart; i<=rowEnd; i+=1)
+		AppendToGraph inWave[i][,*]
+	endfor
+	
+	ModifyGraph mode=3
+	
+	ModifyGraph/Z rgb[0]=(0,0,0)
+	ModifyGraph/Z rgb[1]=(3,52428,1)
+	ModifyGraph/Z rgb[2]=(1,12815,52428)
+	ModifyGraph/Z rgb[3]=(52428,1,41942)
+	ModifyGraph/Z rgb[4]=(65535,21845,0)
+	Legend ""
+	
+	//AppendLayoutObject/W=aLayout graph dGraphV1
+	//TileWindows
 End
