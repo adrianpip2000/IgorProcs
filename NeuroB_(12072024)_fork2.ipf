@@ -24,7 +24,7 @@
 
 
 #pragma rtGlobals=2		// Use modern global access method.
-#pragma IgorVersion=6.0
+#pragma IgorVersion=7.0
 #pragma ModuleName=NeuroBunny
 
 
@@ -608,7 +608,7 @@ Function testCur()
 	
 End
 
-Structure curRGB
+Structure testcurRGB
 	STRUCT RGBColor A_RGB
 	STRUCT RGBColor B_RGB
 	STRUCT RGBColor C_RGB
@@ -622,17 +622,22 @@ Function [Variable r, Variable g, Variable b] what()
 	return [r,g,b]
 End
 
-Function whatf()
-	STRUCT curRGB cr
+Function testwhatf()
+	STRUCT testcurRGB cr
 	cr.A_RGB.red = 10
 End
 
 Function setCursorsInit(String inWave)
-	Cursor/C=(65535,0,0)/W=Experiments/H=1/S=1/L=1/P A,$inWave,0
-	Cursor/C=(65535,0,0)/W=Experiments/H=1/S=1/L=1/P B,$inWave,100
-	Cursor/C=(65535,33232,0)/W=Experiments/H=1/S=1/L=1/P C,$inWave,numpnts($inWave)-200
-	Cursor/C=(65535,33232,0)/W=Experiments/H=1/S=1/L=1/P D,$inWave,numpnts($inWave)-100
-	//Cursor/C=(65535,33232,0)/W=Experiments/H=1/S=1/L=1/P E,$inWave,numpnts($inWave)-1
+	DFREF saveDFR = GetDataFolderDFR()				//Save initial data folder
+	SetDataFolder root:Globals
+	Variable/G gCursorA=0, gCursorB=0, gCursorC=pnt2x($inWave, numpnts($inWave)-200), gCursorD=pnt2x($inWave, numpnts($inWave)-100)
+	
+	Cursor/C=(65535,0,0)/W=Experiments/H=1/S=1/L=1 A, $inWave, gCursorA
+	Cursor/C=(65535,0,0)/W=Experiments/H=1/S=1/L=1 B, $inWave, gCursorB
+	Cursor/C=(65535,33232,0)/W=Experiments/H=1/S=1/L=1 C, $inWave, gCursorC
+	Cursor/C=(65535,33232,0)/W=Experiments/H=1/S=1/L=1 D, $inWave, gCursorD
+	
+	SetDataFolder saveDFR								//Go back to initial data folder
 End
 
 Function DisplayWaveListAnal(list)
@@ -693,40 +698,20 @@ Function DisplayNextWave(list)
 		gwaveindex -= 1
 		DoAlert 0,"Ran out of waves!"			// Ran out of waves
 	else
-	
-		//----
-		//TODO: fix this -AdrianGR
-		ControlInfo/W=NeuroBunny chk_IgnoreSavedCursors
-		variable flag_IgnoreSavedCursors = V_Value
-		variable cursorsFound, cursorsFoundIndex, curA, curB, curC, curD
-		[cursorsFound, cursorsFoundIndex, curA, curB, curC, curD] = getSavedCursors(gTheWave)
-		
-		if((cursorsFound==1 && flag_IgnoreSavedCursors==0) && flag_checkFixCursor==0)
-			//Variable x0, x1, x2, x3
-			x0=curA
-			x1=curB
-			x2=curC
-			x3=curD
-			print x0,x1,x2,x3
-			//SetDataFolder root:
-			Variable/G gCursorA=x0, gCursorB=x1, gCursorC=x2, gCursorD=x3	
-			NVAR gwaveindex=root:Globals:gwaveindex, gCursorA=root:gCursorA, gCursorB=root:gCursorB, gCursorC=root:gCursorC, gCursorD=root:gCursorD
-		else //if(cursorsFound==0 || flag_IgnoreSavedCursors==1 || flag_checkFixCursor==0)
-			NVAR gwaveindex=root:Globals:gwaveindex, gCursorA=root:Globals:gCursorA, gCursorB=root:Globals:gCursorB, gCursorC=root:Globals:gCursorC, gCursorD=root:Globals:gCursorD
-		endif
-	
 		update_Freq(gTheWave)
-		//DoWindow/K Experiments
-		KillWindow/Z Experiments
-		Display/N=Experiments/K=1/W=(180,50,955,700) $gTheWave
-		ModifyGraph/W=Experiments rgb=(0,39168,0)
-		ShowInfo/W=Experiments
-		setCursorsInit(gTheWave)
+		////DoWindow/K Experiments
+		//KillWindow/Z Experiments
+		//Display/N=Experiments/K=1/W=(180,50,955,700) $gTheWave
+		//ModifyGraph/W=Experiments rgb=(0,39168,0)
+		//ShowInfo/W=Experiments
+		
+		refreshCursors()
+		//setCursorsInit(gTheWave)
 		//Cursor/C=(65535,0,0)/H=1/S=1/L=1 A,$gTheWave,gCursorA
 		//Cursor/C=(65535,0,0)/H=1/S=1/L=1 B,$gTheWave,gCursorB
 		//Cursor/C=(65535,33232,0)/H=1/S=1/L=1 C,$gTheWave,gCursorC
 		//Cursor/C=(65535,33232,0)/H=1/S=1/L=1 D,$gTheWave,gCursorD
-//		Cursor/C=(65535,33232,0)/H=1/S=1/L=1 E,$gTheWave,numpnts($gTheWave)-1
+		//Cursor/C=(65535,33232,0)/H=1/S=1/L=1 E,$gTheWave,numpnts($gTheWave)-1
 	endif
 	SetDataFolder root:
 End
@@ -764,34 +749,15 @@ Function DisplayPreviousWave(list)
 		gwaveindex += 1
 		DoAlert 0,"Ran out of waves!"			// Ran out of waves
 	else
-	
-		//----
-		//TODO: fix this -AdrianGR
-		ControlInfo/W=NeuroBunny chk_IgnoreSavedCursors
-		variable flag_IgnoreSavedCursors = V_Value
-		variable cursorsFound, cursorsFoundIndex, curA, curB, curC, curD
-		[cursorsFound, cursorsFoundIndex, curA, curB, curC, curD] = getSavedCursors(gTheWave)
-		
-		if((cursorsFound==1 && flag_IgnoreSavedCursors==0) && flag_checkFixCursor==0)
-			//Variable x0, x1, x2, x3
-			x0=curA
-			x1=curB
-			x2=curC
-			x3=curD
-			//SetDataFolder root:
-			Variable/G gCursorA=x0, gCursorB=x1, gCursorC=x2, gCursorD=x3	
-			NVAR gwaveindex=root:Globals:gwaveindex, gCursorA=root:gCursorA, gCursorB=root:gCursorB, gCursorC=root:gCursorC, gCursorD=root:gCursorD
-		else //if(cursorsFound==0 || flag_IgnoreSavedCursors==1 || flag_checkFixCursor==0)
-			NVAR gwaveindex=root:Globals:gwaveindex, gCursorA=root:Globals:gCursorA, gCursorB=root:Globals:gCursorB, gCursorC=root:Globals:gCursorC, gCursorD=root:Globals:gCursorD
-		endif
-
 		update_Freq(gTheWave)
-		//DoWindow/K Experiments
-		KillWindow Experiments
-		Display/N=Experiments/K=1/W=(180,50,955,700) $gTheWave
-		ModifyGraph/W=Experiments rgb=(0,39168,0)
-		ShowInfo/W=Experiments
-		setCursorsInit(gTheWave)
+		////DoWindow/K Experiments
+		//KillWindow Experiments
+		//Display/N=Experiments/K=1/W=(180,50,955,700) $gTheWave
+		//ModifyGraph/W=Experiments rgb=(0,39168,0)
+		//ShowInfo/W=Experiments
+		
+		refreshCursors()
+		//setCursorsInit(gTheWave)
 		//Cursor/C=(65535,0,0)/H=1/S=1/L=1 A,$gTheWave,gCursorA
 		//Cursor/C=(65535,33232,0)/H=1/S=1/L=1 B,$gTheWave,gCursorB
 		//Cursor/C=(65535,33232,0)/H=1/S=1/L=1 C,$gTheWave,gCursorC
@@ -799,6 +765,61 @@ Function DisplayPreviousWave(list)
 	endif
 	SetDataFolder root:
 End
+
+
+//Handles checking and setting of cursors -AdrianGR
+Function refreshCursors()
+	SVAR gTheWave=root:Globals:gTheWave
+	Variable x0, x1, x2, x3
+	SetDataFolder root:OrigData
+	
+	ControlInfo/W=NeuroBunny checkFixCursor
+	Variable flag_checkFixCursor = V_Value
+	
+	ControlInfo/W=NeuroBunny chk_IgnoreSavedCursors
+	Variable flag_IgnoreSavedCursors = V_Value
+	Variable cursorsFound, cursorsFoundIndex, curA, curB, curC, curD
+	[cursorsFound, cursorsFoundIndex, curA, curB, curC, curD] = getSavedCursors(gTheWave)
+	
+	if(flag_checkFixCursor==0)
+		if(cursorsFound==1 && flag_IgnoreSavedCursors==0)
+			x0=curA
+			x1=curB
+			x2=curC
+			x3=curD
+			KillWindow/Z Experiments
+			Display/N=Experiments/K=1/W=(180,50,955,700) $gTheWave
+			ModifyGraph/W=Experiments rgb=(0,39168,0)
+			ShowInfo/W=Experiments
+			Cursor/C=(65535,0,0)/W=Experiments/H=1/S=1/L=1 A, $gTheWave, x0
+			Cursor/C=(65535,0,0)/W=Experiments/H=1/S=1/L=1 B, $gTheWave, x1
+			Cursor/C=(65535,33232,0)/W=Experiments/H=1/S=1/L=1 C, $gTheWave, x2
+			Cursor/C=(65535,33232,0)/W=Experiments/H=1/S=1/L=1 D, $gTheWave, x3
+			SetDataFolder root:
+			Variable/G gCursorA=x0, gCursorB=x1, gCursorC=x2, gCursorD=x3	
+			//NVAR gwaveindex=root:Globals:gwaveindex, gCursorA=root:gCursorA, gCursorB=root:gCursorB, gCursorC=root:gCursorC, gCursorD=root:gCursorD
+		elseif(cursorsFound==0 || (cursorsFound==1 && flag_IgnoreSavedCursors==1))
+			KillWindow/Z Experiments
+			Display/N=Experiments/K=1/W=(180,50,955,700) $gTheWave
+			ModifyGraph/W=Experiments rgb=(0,39168,0)
+			ShowInfo/W=Experiments
+			SetDataFolder root:
+			setCursorsInit(gTheWave)
+			if(flag_IgnoreSavedCursors==0)
+				print "Could not find saved cursors for this wave"
+				CheckBox chk_IgnoreSavedCursors, win=NeuroBunny, value=1
+			endif
+			//NVAR gwaveindex=root:Globals:gwaveindex, gCursorA=root:gCursorA, gCursorB=root:gCursorB, gCursorC=root:gCursorC, gCursorD=root:gCursorD
+		endif	
+	elseif(flag_checkFixCursor==1)
+		DoAlert 0, "Saved cursors functionality is not (yet) compatible with fixed cursors!"
+		abort
+	endif
+		
+	SetDataFolder root:
+End
+///////////////////////////////////////////
+
 
 Function ForwCursorA()
 	SVAR gTheWave=root:Globals:gTheWave
@@ -824,60 +845,6 @@ Function ForwCursorA()
 	endif
 	
 end
-
-////////////////////////////////////////// I think this works now(?) -AdrianGR
-Function refreshCursors()
-	SVAR gTheWave=root:Globals:gTheWave
-	Variable x0, x1, x2, x3
-	SetDataFolder root:OrigData
-	
-	ControlInfo/W=NeuroBunny checkFixCursor
-	Variable flag_checkFixCursor = V_Value
-	
-	ControlInfo/W=NeuroBunny chk_IgnoreSavedCursors
-	Variable flag_IgnoreSavedCursors = V_Value
-	Variable cursorsFound, cursorsFoundIndex, curA, curB, curC, curD
-	[cursorsFound, cursorsFoundIndex, curA, curB, curC, curD] = getSavedCursors(gTheWave)
-	
-	if(flag_checkFixCursor==0)
-		if(cursorsFound==1 && flag_IgnoreSavedCursors==0)
-			x0=curA
-			x1=curB
-			x2=curC
-			x3=curD
-			KillWindow/Z Experiments
-			Display/N=Experiments/K=1/W=(180,50,955,700) $gTheWave
-			ModifyGraph/W=Experiments rgb=(0,39168,0)
-			ShowInfo/W=Experiments
-			Cursor/C=(65535,0,0)/W=Experiments/H=1/S=1/L=1 A,$gTheWave,x0
-			Cursor/C=(65535,0,0)/W=Experiments/H=1/S=1/L=1 B,$gTheWave,x1
-			Cursor/C=(65535,0,0)/W=Experiments/H=1/S=1/L=1 C,$gTheWave,x2
-			Cursor/C=(65535,0,0)/W=Experiments/H=1/S=1/L=1 D,$gTheWave,x3
-			SetDataFolder root:
-			//Variable/G gCursorA=x0, gCursorB=x1, gCursorC=x2, gCursorD=x3	
-			//NVAR gwaveindex=root:Globals:gwaveindex, gCursorA=root:gCursorA, gCursorB=root:gCursorB, gCursorC=root:gCursorC, gCursorD=root:gCursorD
-		elseif((cursorsFound==0 || cursorsFound==1) && flag_IgnoreSavedCursors==1)
-			KillWindow/Z Experiments
-			Display/N=Experiments/K=1/W=(180,50,955,700) $gTheWave
-			ModifyGraph/W=Experiments rgb=(0,39168,0)
-			ShowInfo/W=Experiments
-			setCursorsInit(gTheWave)
-			SetDataFolder root:
-			//Variable/G gCursorA=x0, gCursorB=x1, gCursorC=x2, gCursorD=x3	
-			//NVAR gwaveindex=root:Globals:gwaveindex, gCursorA=root:gCursorA, gCursorB=root:gCursorB, gCursorC=root:gCursorC, gCursorD=root:gCursorD
-		elseif(cursorsFound==0 && flag_IgnoreSavedCursors==0)
-			print "Could not find saved cursors for this wave"
-			CheckBox chk_IgnoreSavedCursors, value=1
-		else
-			//NVAR gwaveindex=root:Globals:gwaveindex, gCursorA=root:Globals:gCursorA, gCursorB=root:Globals:gCursorB, gCursorC=root:Globals:gCursorC, gCursorD=root:Globals:gCursorD
-		endif	
-	elseif(flag_checkFixCursor==1)
-		DoAlert 0, "Saved cursors functionality is not (yet) compatible with fixed cursors!"
-	endif
-		
-	SetDataFolder root:
-End
-///////////////////////////////////////////
 
 Function BackwCursorA()
 	SVAR gTheWave=root:Globals:gTheWave
@@ -2122,13 +2089,15 @@ Function Trains_Amp()
 
 	variable x0,x1,dx,x2
 	variable j, nmax, n, m, amplitude, leak
-	Variable V_fitOptions=4
+	Variable V_FitOptions=4
+	Variable V_FitMaxIters=80
 	string activetrace, destwavename, fit_name
 	variable amp, fitmax, xfit, baseline, Init_amp, Init_baseline
 	Variable DoCharge=Nan
 	variable/G cursorA_orig,cursorB_orig,cursorC_orig
 	variable vmin_cache
-	Variable s
+	Variable a
+	Variable recEnd
 	
 	variable post_pulse_baseline, V_avg, i_loc//, K0 //K0 should not be declared because it is a system variable! -AdrianGR
 	
@@ -2210,6 +2179,12 @@ Function Trains_Amp()
 	if (WaveExists('TrainAmp_SyncAUC_cumulative')==0)	//Wave for saving cumulative sync. AUC -AdrianGR
 		Make/N=(1,cols) 'TrainAmp_SyncAUC_cumulative'
 	endif
+	if (WaveExists('TrainAmp_CTimepoints')==0)	//Wave for saving timing of each stimulation -AdrianGR
+		Make/D/N=(1,cols) 'TrainAmp_CTimepoints'
+	endif
+	if (WaveExists('TrainAmp_RecovAmpFrac')==0)	//Wave for saving ... -AdrianGR
+		Make/N=(1,cols) 'TrainAmp_RecovAmpFrac'
+	endif
 	
 	
 	
@@ -2221,9 +2196,9 @@ Function Trains_Amp()
 	endif
 	
 	
-	wave/Z W_coef=root:WorkData:W_coef, W_fitConstants=root:WorkData:W_fitConstants
+	wave/D/Z W_coef=root:WorkData:W_coef, W_fitConstants=root:WorkData:W_fitConstants //Made into double precision waves as recommended in manual -AdrianGR
 	wave/Z/T experimentwave=root:experimentwave
-	wave/Z/T folder=root:folder
+	wave/Z/T folder=root:Data:folder
 	
 	SetDataFolder root:OrigData
 	duplicate/O $gTheWave root:WorkData:$gTheWave
@@ -2251,9 +2226,11 @@ Function Trains_Amp()
 	Wave w_resTrainAmp_SyncAUC = root:Results:TrainAmp_SyncAUC
 	Wave w_resTrainAmp_ASyncAUC_cumulative = root:Results:TrainAmp_ASyncAUC_cumulative
 	Wave w_resTrainAmp_SyncAUC_cumulative = root:Results:TrainAmp_SyncAUC_cumulative
+	Wave w_resCTimepoints = root:Results:TrainAmp_CTimepoints
+	Wave w_resRecAF = root:Results:TrainAmp_RecovAmpFrac
 	
 	
-	Wave w_
+	//Wave w_
 	
 	Variable avgT = 0.001	//define length of time interval for averaging, e.g. 2 ms -AdrianGR
 	Variable avgT2 = avgT//*5 //slightly longer interval for initial and final baseline -AdrianGR
@@ -2264,6 +2241,7 @@ Function Trains_Amp()
 	//-AdrianGR
 	Redimension/N=(n,-1) w_resTrainAmp_fromInitBL, w_resTrainAmp_fromInitBL_Norm, w_resTrainAmp_ASyncAUC, w_resTrainAmp_ASyncLineX, w_resTrainAmp_ASyncLineY, w_baselineX, w_baselineY, w_resTrainAmp_SyncAUC
 	Redimension/N=(n,-1) w_resTrainAmp_ASyncAUC_cumulative, w_resTrainAmp_SyncAUC_cumulative
+	Redimension/N=(n,-1) w_resCTimepoints, w_resRecAF
 	
 	BlankArtifactInTrain(w_temp,x0,x1,gTrainfreq,gTrainStim,AverageT=avgT)
 	n -= 1
@@ -2299,7 +2277,6 @@ Function Trains_Amp()
 			//Cursor B $gTheWave x1
 		endif
 		
-		
 		//WaveStats/Q/M=1/R=(x1,x0+(j+1)/gTrainfreq) w_temp
 		WaveStats/Q/M=1/R=(x1,x0+1/gTrainfreq) w_temp
 		Init_amp = V_min
@@ -2312,7 +2289,6 @@ Function Trains_Amp()
 		amp = Init_amp - baseline									//Save evoked amplitude (relative to last sustained level).
 		w_resSync[n][j] = amp
 		
-		
 		//-AdrianGR //TODO: something wrong here?
 		WaveStats/Q/R=(x0-avgT,x0) w_temp								//Getting average from final avgT of previous pulse
 		Variable preStimBaseline = V_avg
@@ -2323,9 +2299,6 @@ Function Trains_Amp()
 		//w_resTrainAmp_ASyncLineY[n][j] = mean(w_temp,x0-avgT,x0)	//TODO: not sure if it is reasonable to take an average instead(?) -AdrianGR
 		
 		
-		
-		
-			
 		if (j>0 && x2>0 && 1==0) //DISABLED FITTING SECTION BY REQUIRING 1==0 (just while testing) -AdrianGR
 		
 			//K0 = post_pulse_baseline //value to which decay is expected to plateau //used as initial guess? -AdrianGR
@@ -2338,8 +2311,6 @@ Function Trains_Amp()
 			Make/O/D/N=(5) guessWave
 			guessWave[0] = post_pulse_baseline; guessWave[1] = -9e-10; guessWave[2] = 0.005; guessWave[3] = -3e-10; guessWave[4] = 0.05
 			print guessWave
-			
-			
 			
 			wavestats/Q/M=1/R=(x1-1/gTrainfreq+0.0004,x0) w_temp // finetuning point!
 			
@@ -2363,60 +2334,63 @@ Function Trains_Amp()
 				endif
 			endtry
 			
-
-			
 			//print V_minLoc
 			
 			AppendToGraph/W=Experiments $fit_name
-			
 			
 			WaveStats/Q/M=1/R=(x1,x0+1/gTrainfreq) w_temp
 			w_resCorr[n][j] = V_min-(W_coef[0]+W_coef[1]*exp(-((x1)-W_fitConstants[0])/W_coef[2])+W_coef[3]*exp(-((x1)-W_fitConstants[0])/W_coef[4])) //Save amplitude from second pulse on based the predicted decay of the first pulse
 			
 			print "w_resCorr[n][j]", w_resCorr[n][j]
 			
-			
 			x2+=1/gTrainfreq
 			
 		else
-	
 			w_resCorr[n][j] = (amp)
-			
 		endif
-		
 		//Tag/L=2/W=Experiments/A=MB $fit_name, 100, "\\Z05\\ON" //-AdrianGR
-		
 		j += 1
 	while (j < gTrainStim && 1==0)
 	
 	
+	
 	//New section replacing the old one from above. Lacks fitting. -AdrianGR
 	x0 = x0_cache; x1 = x1_cache										//Reset x0 and x1 (only necessary if they are changed before this section starts) -AdrianGR
-	Variable x0s, x1s
-	for (s=0; s<gTrainStim; s+=1)
-		x0s = x0 + s/gTrainfreq
-		x1s = x1 + s/gTrainfreq
-		if (s==0)
-			WaveStats/Q/M=1/R=(x0s-avgT2,x0s) w_temp				//Average over avgT2 (only for first pulse) -AdrianGR
+	Variable x0a, x1a
+	for (a=0; a<gTrainStim; a+=1)		
+		x0a = x0 + a/gTrainfreq
+		x1a = x1 + a/gTrainfreq
+		if (a==0)
+			WaveStats/Q/M=1/R=(x0a-avgT2,x0a) w_temp				//Average over avgT2 (only for first pulse) -AdrianGR
 		else
-			WaveStats/Q/M=1/R=(x0s-avgT,x0s) w_temp				//Average over avgT (to calculate last sustained level) -AdrianGR
+			WaveStats/Q/M=1/R=(x0a-avgT,x0a) w_temp				//Average over avgT (to calculate last sustained level) -AdrianGR
 		endif
 		baseline = V_avg
-		WaveStats/Q/M=1/R=(x1s,x0s+1/gTrainfreq) w_temp			//Get pulse minimum (peak) -AdrianGR
+		WaveStats/Q/M=1/R=(x1a,x0a+1/gTrainfreq) w_temp			//Get pulse minimum (peak) -AdrianGR
 		Init_amp = V_min
-		w_resAll[n][s] = Init_Amp - Init_baseline			//Save full amplitude to zero
-		w_resDel[n][s] = V_minLoc - x0s						//Save delay from start of artefact to peak 							
-		w_resSync[n][s] = Init_amp - baseline				//Save evoked amplitude (relative to last sustained level).
+		w_resAll[n][a] = Init_amp - Init_baseline			//Save full amplitude to zero
+		w_resDel[n][a] = V_minLoc - x0a						//Save delay from start of artefact to peak 							
+		w_resSync[n][a] = Init_amp - baseline				//Save evoked amplitude (relative to last sustained level).
 		
-		w_resTrainAmp_fromInitBL[n][s] = Init_amp - Init_baseline	//Amplitude from baseline as defined above
+		w_resTrainAmp_fromInitBL[n][a] = Init_amp - Init_baseline	//Amplitude from baseline as defined above
 		
-		w_resTrainAmp_ASyncLineX[n][s] = x0s									//Save X-coordinates for async release -AdrianGR
-		w_resTrainAmp_ASyncLineY[n][s] = w_temp(x0s)							//Save Y-coordinates for async release -AdrianGR
-		if (s == gTrainStim-1)															//if-statement is necessary to also save last point -AdrianGR
-			w_resTrainAmp_ASyncLineX[n][s+1] = x0s+1/gTrainfreq
-			//w_resTrainAmp_ASyncLineY[n][s+1] = w_temp(x0s+1/gTrainfreq)
-			w_resTrainAmp_ASyncLineY[n][s] = mean(w_temp,x0s-avgT,x0s)		//TODO: would it be reasonable to take an average instead? -AdrianGR
+		
+		WaveStats/Q/M=1/R=(x0+(a+1)/gTrainfreq-avgT,x0+(a+1)/gTrainfreq) w_temp		//Calculate amplitude at end of pulse -AdrianGR
+		recEnd = V_avg - baseline
+		w_resRecAF[n][a] = recEnd / w_resSync[n][a]											//Calculate fractional recovery relative to pulse peak -AdrianGR
+		
+		
+		w_resTrainAmp_ASyncLineX[n][a] = x0a									//Save X-coordinates for async release -AdrianGR
+		w_resTrainAmp_ASyncLineY[n][a] = w_temp(x0a)							//Save Y-coordinates for async release -AdrianGR
+		if (a == gTrainStim-1)															//if-statement is necessary to also save last point -AdrianGR
+			w_resTrainAmp_ASyncLineX[n][a+1] = x0a+1/gTrainfreq
+			//w_resTrainAmp_ASyncLineY[n][a+1] = w_temp(x0a+1/gTrainfreq)
+			w_resTrainAmp_ASyncLineY[n][a] = mean(w_temp,x0a-avgT,x0a)		//TODO: would it be reasonable to take an average instead? -AdrianGR
 		endif
+		
+		//String tempCalc
+		w_resCTimepoints[n][a] = x0a - x0 + 1/gTrainfreq			//Save timing of end of stimulation pulses relative to first pulse -AdrianGR
+		//w_resCTimepoints[n][a] = str2num(tempCalc)
 		
 	endfor
 	
@@ -2424,29 +2398,73 @@ Function Trains_Amp()
 	Wave w_resSync_Norm = normalize2DWave(w_resSync)
 	
 	
-	//This section calculates AUCs/'charge', pretty much. -AdrianGR
+	
+	if(WaveExists(root:Results:TrainAmp_fitCoefs)==0)
+		Make/D/N=(5,gTrainStim,n+1) root:Results:TrainAmp_fitCoefs
+		Wave resCoefs = root:Results:TrainAmp_fitCoefs
+		SetDimLabel 0, 0, y0, resCoefs
+		SetDimLabel 0, 1, A1, resCoefs
+		SetDimLabel 0, 2, tau1, resCoefs
+		SetDimLabel 0, 3, A2, resCoefs
+		SetDimLabel 0, 4, tau2, resCoefs
+	else
+		Wave/Z resCoefs = root:Results:TrainAmp_fitCoefs
+		Redimension/N=(-1,-1,n+1) resCoefs
+	endif
+	dx = x1 - x0
+	V_FitMaxIters = 100
+	for(a=0; a<gTrainStim; a+=1)
+		SetDataFolder root:WorkData
+		fit_name = "fit_pulse"+num2str(a)
+		print "\r\n", fit_name
+		Duplicate/O w_temp, $fit_name
+		Wave tempFitWave = $fit_name
+		tempFitWave = NaN
+		WaveStats/Q/M=1/R=(x0+dx+a/gTrainfreq,x0+(a+1)/gTrainfreq) w_temp
+		Variable nudge = 0.0003		//Truncate start of fitting range by 300 us
+		Make/D/O/N=(5) w_fitCoef
+		//Make/T/O w_fitConstraintsWave={"K0 <"+num2str(post_pulse_baseline),"K0>"+num2str(1.1*w_temp(x0+(a+1)/gTrainfreq))}
+		//Wave w_constr = w_fitConstraintsWave
+		CurveFit/N=1 dblexp_XOffset kwCWave=w_fitCoef, w_temp(V_minLoc+nudge,x0+(a+1)/gTrainfreq) /D=$fit_name ///C=w_constr
+		
+		if(a==0)
+			resCoefs[,*][0][n] = w_fitCoef[p]
+			SetDimLabel 2, n, $gTheWave, resCoefs
+			SetDimLabel 1, a, $fit_name, resCoefs
+		else
+			//InsertPoints/M=1 INF, 1, resCoefs
+			resCoefs[,*][a][n] = w_fitCoef[p]
+			SetDimLabel 1, a, $fit_name, resCoefs
+		endif
+		AppendToGraph/W=Experiments $fit_name
+	endfor
+	
+	
+	
+	
+	//Doesn't work properly. This section calculates AUCs/'charge', pretty much. -AdrianGR
 	Duplicate/O w_temp, w_temp2														//Duplicate wave so we can subtract Init_baseline
 	w_temp2 = w_temp2 - Init_baseline												//Subtract Init_baseline
 	//Duplicate/O/RMD=[n][,*] w_resTrainAmp_ASyncLineX, w_tempASyncX
 	//Duplicate/O/RMD=[n][,*] w_resTrainAmp_ASyncLineY, w_tempASyncY
 	x0 = x0_cache; x1 = x1_cache														//Reset x0 and x1 (only necessary if they are changed before this section starts) -AdrianGR
-	for (s=0; s<gTrainStim; s+=1)
+	for (a=0; a<gTrainStim; a+=1)
 		//break
-		Duplicate/O/RMD=[n][s,s+1] w_resTrainAmp_ASyncLineX, w_tempASyncX
-		Duplicate/O/RMD=[n][s,s+1] w_resTrainAmp_ASyncLineY, w_tempASyncY
+		Duplicate/O/RMD=[n][a,a+1] w_resTrainAmp_ASyncLineX, w_tempASyncX
+		Duplicate/O/RMD=[n][a,a+1] w_resTrainAmp_ASyncLineY, w_tempASyncY
 		//w_tempASyncY = w_tempASyncY - Init_baseline
 		Make/O/D/N=(2) w_tempX
-		w_tempX[0] = x1+s/gTrainfreq
-		w_tempX[1] = x0+(s+1)/gTrainfreq
+		w_tempX[0] = x1+a/gTrainfreq
+		w_tempX[1] = x0+(a+1)/gTrainfreq
 		Variable syncPlusASyncArea = area(w_temp2, w_tempX[0], w_tempX[1])
 		Make/O/D/N=(2) w_tempY
 		w_tempY[0] = interp(w_tempX[0], w_tempASyncX, w_tempASyncY)
-		w_tempY[1] = w_tempASyncY[0][s+1]
+		w_tempY[1] = w_tempASyncY[0][a+1]
 		w_tempY = w_tempY - Init_baseline
 		Variable ASyncArea = areaXY(w_tempX, w_tempY, w_tempX[0], w_tempX[1])
 		
-		w_resTrainAmp_ASyncAUC[n][s] = abs(ASyncArea)
-		w_resTrainAmp_SyncAUC[n][s] = abs(syncPlusASyncArea - ASyncArea)
+		w_resTrainAmp_ASyncAUC[n][a] = abs(ASyncArea)
+		w_resTrainAmp_SyncAUC[n][a] = abs(syncPlusASyncArea - ASyncArea)
 	endfor
 	KillWaves w_tempASyncX, w_tempASyncY, w_tempX, w_tempY
 	
@@ -2495,7 +2513,7 @@ Function Trains_Amp()
 	endif
 	
 	
-	if(1==0)
+	if(1==0) //DISABLED
 		SetDataFolder root:Results:
 		transposeWaveMake(TrainAmp_All)
 		String refWaveList = "root:Results:TrainAmp_All;root:Results:TrainAmp_corrected;root:Results:TrainAmp_Delay;root:Results:TrainAmp_fromInitBaseline;root:Results:TrainAmp_Sync;root:Results:TrainAmp_CAll;root:Results:TrainAmp_CCum;root:Results:TrainAmp_CSync;root:Results:TrainAmp_CSyncCum;root:Results:TrainAmp_CASync;root:Results:TrainAmp_CASyncCum"
@@ -4134,17 +4152,29 @@ End
 
 
 // Extract frequency information from string -AdrianGR
-Function getStringFreq(inString)
+// Optionally supply quiet level (1: prints if not able to extract info, 2: does not print at all)
+// Optionally supply typeMsg, which is inserted into print message
+Function getStringFreq(inString, [quiet, typeMsg])
 	String inString
+	Variable quiet
+	String typeMsg
+	if(ParamIsDefault(typeMsg))
+		typeMsg = ""
+	endif
+	
 	String regExPattern = "([0-9]{1,3})(.?)([Hh]z)" //Matches e.g. "20Hz", "20 Hz", "200_hz" etc.
 	String outFreq = ""
 	
 	SplitString/E=regExPattern inString, outFreq
 	if(V_flag==3)
-		print("Extracted frequency is: "+outFreq+" Hz")
+		if(quiet!=1)
+			print("Extracted "+typeMsg+"frequency is: "+outFreq+" Hz")
+		endif
 		return str2num(outFreq)
 	else
-		print("Could not extract frequency, defaulted to 50 Hz")
+		if(quiet<2)
+			print("Could not extract "+typeMsg+"frequency, defaulted to 50 Hz")
+		endif
 		return 50
 	endif
 End
@@ -4153,8 +4183,8 @@ End
 Function update_Freq(String inWaveStr)
 	NVAR gTrainFreq = root:Globals:gTrainFreq
 	NVAR gRecFreq = root:Globals:gRecFreq
-	gTrainFreq = getStringFreq(inWaveStr)
-	gRecFreq = getStringFreq(inWaveStr)
+	gTrainFreq = getStringFreq(inWaveStr, typeMsg="train ")
+	gRecFreq = getStringFreq(inWaveStr, quiet=1, typeMsg="gRecFreq ")
 End
 
 Function ExportWaves()
@@ -4211,7 +4241,7 @@ Function testFunc69()
 	print NameOfWave(mordi), mordi[1][2]
 End
 
-//Does not work properly at this point
+//Does not work properly at this point -AdrianGR
 Function/WAVE transposeWaveRefWaves(inRefWave)
 	Wave/WAVE inRefWave
 	//Duplicate inRefWave, $"inRefWave_dup"
@@ -4281,7 +4311,7 @@ Function testTranspose()
 	
 End
 
-Function nothingAtAll()
+Function testnothingAtAll()
 SetDataFolder root:Results:
 		
 		//String refWaveList = "TrainAmp_All;TrainAmp_corrected;TrainAmp_Delay;TrainAmp_fromInitBaseline;TrainAmp_Sync;TrainAmp_CAll;TrainAmp_CCum;TrainAmp_CSync;TrainAmp_CSyncCum;TrainAmp_CASync;TrainAmp_CASyncCum"
@@ -4335,46 +4365,6 @@ Function/WAVE normalize2DWave(inWave, [normDim, outWaveName, normIndex])
 	endswitch
 	
 	return outWave
-End
-
-//Useless -AdrianGR
-Function extractSweepNum(inString, [regExPattern])
-	String inString
-	String regExPattern
-	if(ParamIsDefault(regExPattern))
-		regExPattern = "^x\d{1}X.+_\d{1}_\d{1}_(\d{3})_\d{1}_.+$"	//If RegEx pattern has not been supplied, default to this (made based on test string "x0X20Hz_50_9s_1_1_001_1_I-mon")
-	endif
-	String sweepOut
-	Variable sweepOutInt
-	
-	SplitString/E=regExPattern inString, sweepOut
-	if(V_flag != 1)
-		return NaN								//If not exactly one match was found, 
-	endif
-	
-	sweepOutInt = str2num(sweepOut)
-	
-	return sweepOutInt
-End
-
-//TODO: fix this -AdrianGR
-Function extractSweepNum2(inString, [regExPattern])
-	String inString
-	String regExPattern
-	if(ParamIsDefault(regExPattern))
-		regExPattern = "^(x\d{1}X.+)_(\d{1})_(\d{1})_(\d{3})_(\d{1})_(.+)$"	//If RegEx pattern has not been supplied, default to this (made based on test string "x0X20Hz_50_9s_1_1_001_1_I-mon")
-	endif
-	String proStr, grStr, serStr, swStr, trStr, sigStr
-	Variable sweepOutInt
-	
-	SplitString/E=regExPattern inString, proStr, grStr, serStr, swStr, trStr, sigStr
-	if(V_flag != 6)
-		
-	endif
-	
-	//sweepOutInt = str2num(sweepOut)
-	
-	//return sweepOutInt
 End
 
 
@@ -4464,4 +4454,81 @@ Function displayGraphV2(inWave, [rowStart, rowEnd])
 	
 	//AppendLayoutObject/W=aLayout graph dGraphV1
 	//TileWindows
+End
+
+//TODO: fix this -AdrianGR
+Function extractSweepNum2(inString, [regExPattern])
+	String inString
+	String regExPattern
+	if(ParamIsDefault(regExPattern))
+		regExPattern = "^(x\d{1}X.+)_(\d{1})_(\d{1})_(\d{3})_(\d{1})_(.+)$"	//If RegEx pattern has not been supplied, default to this (made based on test string "x0X20Hz_50_9s_1_1_001_1_I-mon")
+	endif
+	String proStr, grStr, serStr, swStr, trStr, sigStr
+	Variable sweepOutInt
+	
+	SplitString/E=regExPattern inString, proStr, grStr, serStr, swStr, trStr, sigStr
+	if(V_flag != 6)
+		
+	endif
+	
+	Make/O/T tempWaveExtract = {proStr, grStr, serStr, swStr, trStr, sigStr}
+	Wave/T w = tempWaveExtract
+	
+	
+	//return sweepOutInt
+End
+
+Function testF()
+//	Make/O/N=(1,1,1,1) tempWaveN
+//	Wave w = tempWaveN
+//	SetDimLabel 0, -1, trace, w
+//	SetDimLabel 1, -1, sweep, w
+//	SetDimLabel 2, -1, series, w
+//	SetDimLabel 3, -1, group, w
+	
+	Make/O/N=(1,1,1,1) tempWaveN
+	Wave w = tempWaveN
+	SetDimLabel 0, -1, trace, w
+	SetDimLabel 1, -1, sweep, w
+	SetDimLabel 2, -1, series, w
+	SetDimLabel 3, -1, group, w
+	
+End
+
+Function testQ()
+	Wave wibwob = $"x0X20Hz_50_9s_1_1_001_1_I-mon"
+	print wibwob(xcsr(B, "Experiments"))
+	print pnt2x(wibwob, 10060)
+End
+
+Function testIntegDiff(String choice)
+	SetDataFolder root:WorkData
+	Duplicate/O WaveRefIndexed("Experiments", 0, 1), w_tempp
+	Wave wt = w_tempp
+	//w_tempp = -w_tempp
+	Duplicate/O wt, w_tempp2
+	Wave wt2 = w_tempp2
+	wt2 = 0
+	
+	strswitch(choice)
+		case "int":
+		case "integrate":
+			Integrate/METH=1 wt /D=wt2
+			SetScale d 0,0,"C", w_tempp2
+			break
+		case "diff":
+		case "differentiate":
+			Differentiate/METH=1 wt /D=wt2
+			SetScale d 0,0,"A/S", w_tempp2
+			break
+	endswitch
+	
+	
+	Display/K=1 wt2
+	AppendToGraph/R/C=(0,30000,10000) wt
+End
+
+Function testIns()
+	Wave w = root:'New_FitCoefficients'
+	InsertPoints/M=1 INF, 1, w
 End
