@@ -800,8 +800,11 @@ Function refreshCursors()
 			//NVAR gwaveindex=root:Globals:gwaveindex, gCursorA=root:gCursorA, gCursorB=root:gCursorB, gCursorC=root:gCursorC, gCursorD=root:gCursorD
 		elseif(cursorsFound==0 || (cursorsFound==1 && flag_IgnoreSavedCursors==1))
 			KillWindow/Z Experiments
+			//removeAllTraces("Experiments")
+			//AppendToGraph/W=Experiments $gTheWave
 			Display/N=Experiments/K=1/W=(180,50,955,700) $gTheWave
 			ModifyGraph/W=Experiments rgb=(0,39168,0)
+			//DoWindow/F Experiments
 			ShowInfo/W=Experiments
 			SetDataFolder root:
 			setCursorsInit(gTheWave)
@@ -4531,4 +4534,23 @@ End
 Function testIns()
 	Wave w = root:'New_FitCoefficients'
 	InsertPoints/M=1 INF, 1, w
+End
+
+Function removeAllTraces(graphWinNameStr)
+	String graphWinNameStr
+	
+	String tracesList = TraceNameList(graphWinNameStr,";",1)
+	//print tracesList
+	
+	Variable numTraces = ItemsInList(tracesList,";")
+	//print "numTraces = ", numTraces
+	
+	Variable i
+	for(i=0; i<numTraces; i+=1)
+		print "i = ", i
+		//String tmpTrace = StringFromList(i, tracesList, ";",0)
+		RemoveFromGraph/Z/W=$graphWinNameStr $""
+	endfor
+	
+	//print "now these traces are on graph: ", TraceNameList(graphWinNameStr,";",1)
 End
