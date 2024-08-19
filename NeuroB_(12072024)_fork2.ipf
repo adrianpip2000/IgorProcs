@@ -279,7 +279,7 @@ Function DoElectrophysiologicalAnalysis()
 MyDFInit()
 NeuroBunnyInit()
 // Create the Analysis Panel
-NewPanel/W=(20,50,215,725) /N=NeuroBunny		
+NewPanel/W=(20,50,215,745) /N=NeuroBunny		
 SetDrawEnv/W=NeuroBunny fname="Arial",fsize=11, save							
 	DrawText/W=NeuroBunny 9,21,"Graph"
 		Button ctrlPreviousGraph,pos={55,3},size={60,20},proc=proc_PreviousGraph,title="previous",win=NeuroBunny, fsize=10
@@ -340,7 +340,8 @@ SetDrawEnv/W=NeuroBunny fname="Arial",fsize=11, save
 				SetVariable setvarTrainStim,pos={10,240},size={90,15},title="# Stimuli:",format="%g",limits={1,200,1},value=root:Globals:gTrainStim,win=NeuroBunny, fsize=10				
 				SetVariable setvarTrainFreq,pos={10,260},size={110,15},title="Frequency:",format="%g",limits={0.1,3000,0.1},value=root:Globals:gTrainFreq,win=NeuroBunny, fsize=10
 				CheckBox checkAsyncTRAIN,pos={120, 260}, help={"Check if doing backextrapolation"}, noproc, title="BExtract?",win=NeuroBunny, value=0, fsize=10 //Changed value to 0 -AdrianGR
-				SetVariable setvarBactExtrN,pos={10,280}, size={120,15},title="#N Backextr:",format="%g",limits={1,200,1},value=root:Globals:gBackExtrN,win=NeuroBunny, fsize=10	    							
+				SetVariable setvarBactExtrN,pos={10,280}, size={120,15},title="#N Backextr:",format="%g",limits={1,200,1},value=root:Globals:gBackExtrN,win=NeuroBunny, fsize=10
+				CheckBox checkFitting,pos={120, 240}, help={"Check to enable fitting"}, noproc, title="Fitting?",win=NeuroBunny, value=0, fsize=10
 				
 			//Button ctrlTrainsAuto,pos={100,215},size={90,20},fColor=(43,158,50),proc=proc_TrainsAuto,title="Auto Trains",win=NeuroBunny,fsize=12,fstyle=001 					// Button for automatic multiple analysis
 			//	SetVariable setvarTrainAuto,pos={100,240},size={80,15},title="# Auto:",format="%g",limits={1,200,1},value=root:Globals:gTrainAuto,win=NeuroBunny, fsize=10
@@ -373,6 +374,7 @@ SetDrawEnv/W=NeuroBunny fname="Arial",fsize=11, save
 			Button ctrlBackwB,pos={10,490},size={40,20},fColor=(20,43,158),proc=proc_BackwB,title="B left",win=NeuroBunny,disable=0, fsize=10
 			CheckBox chk_IgnoreSavedCursors,pos={80, 445},value=1, help={"Check to ignore saved cursor positions"}, noproc, title="Ignore saved cursors",win=NeuroBunny, fsize=10
 			Button button_RefreshCursors,pos={100,470},size={80,20},proc=proc_button_RefreshCursors,title="Refresh cursors",win=NeuroBunny,disable=0, fsize=10
+			Button button_initRTSRpanel,pos={150,675},size={40,15},proc=proc_button_initRTSRpanel,title="RTSR",win=NeuroBunny,disable=0, fsize=10
 End
 
 Function AnalysisTab(name,tab)
@@ -397,6 +399,7 @@ Function AnalysisTab(name,tab)
 		SetVariable setvarTrainFreq,disable=0
 		SetVariable setvarBactExtrN, disable=0
 		CheckBox checkAsyncTRAIN,disable=0
+		CheckBox checkFitting,disable=0
 		CheckBox checkFixCursor,disable=0
 		CheckBox chk_IgnoreSavedCursors,disable=0
 		CheckBox checkFFTtrain,disable=3
@@ -434,6 +437,7 @@ Function AnalysisTab(name,tab)
 		SetVariable setvarTrainFreq,disable=3
 		SetVariable setvarBactExtrN, disable=3
 		CheckBox checkAsyncTRAIN,disable=3
+		CheckBox checkFitting,disable=3
 		CheckBox checkFixCursor,disable=0
 		CheckBox chk_IgnoreSavedCursors,disable=0
 		CheckBox checkFFTtrain,disable=3
@@ -471,6 +475,7 @@ Function AnalysisTab(name,tab)
 		SetVariable setvarTrainFreq,disable=3
 		SetVariable setvarBactExtrN, disable=3
 		CheckBox checkAsyncTRAIN,disable=3
+		CheckBox checkFitting,disable=3
 		CheckBox checkFixCursor,disable=0
 		CheckBox chk_IgnoreSavedCursors,disable=0
 		CheckBox checkFFTtrain,disable=3
@@ -507,6 +512,7 @@ Function AnalysisTab(name,tab)
 		SetVariable setvarTrainFreq,disable=3
 		SetVariable setvarBactExtrN, disable=3
 		CheckBox checkAsyncTRAIN,disable=3
+		CheckBox checkFitting,disable=3
 		CheckBox checkFixCursor,disable=0
 		CheckBox chk_IgnoreSavedCursors,disable=0
 		CheckBox checkFFTtrain,disable=3
@@ -544,6 +550,7 @@ Function AnalysisTab(name,tab)
 		SetVariable setvarTrainFreq,disable=3
 		SetVariable setvarBactExtrN, disable=3
 		CheckBox checkAsyncTRAIN,disable=3
+		CheckBox checkFitting,disable=3
 		CheckBox checkFixCursor,disable=0
 		CheckBox chk_IgnoreSavedCursors,disable=0
 		CheckBox checkFFTtrain,disable=3
@@ -579,6 +586,7 @@ Function AnalysisTab(name,tab)
 		SetVariable setvarTrainFreq,disable=3
 		SetVariable setvarBactExtrN, disable=3
 		CheckBox checkAsyncTRAIN,disable=3
+		CheckBox checkFitting,disable=3
 		CheckBox checkFixCursor,disable=0
 		CheckBox chk_IgnoreSavedCursors,disable=0
 		CheckBox checkFFTtrain,disable=3
@@ -1969,7 +1977,7 @@ Function/S get_protocolname2(gTheWave_str, [regExPattern])
 	String gTheWave_str
 	String regExPattern
 	if(ParamIsDefault(regExPattern))
-		regExPattern = "^x\d{1}X(.+)_\d{1}_\d{1}_\d{3}_\d{1}_.+$"	//If RegEx pattern has not been supplied, default to this (made based on test string "x2X20Hz_50_9s_1_1_001_1_I-mon")
+		regExPattern = "^x[0-9]{1}X?(.+)_\d{1}_\d{1}_\d{3}_\d{1}_.+$"	//If RegEx pattern has not been supplied, default to this (made based on test string "x2X20Hz_50_9s_1_1_001_1_I-mon")
 	endif
 	string p
 	
@@ -2401,51 +2409,63 @@ Function Trains_Amp()
 	Wave w_resSync_Norm = normalize2DWave(w_resSync)
 	
 	
-	
-	if(WaveExists(root:Results:TrainAmp_fitCoefs)==0)
-		Make/D/N=(5,gTrainStim,n+1) root:Results:TrainAmp_fitCoefs
-		Wave resCoefs = root:Results:TrainAmp_fitCoefs
-		SetDimLabel 0, 0, y0, resCoefs
-		SetDimLabel 0, 1, A1, resCoefs
-		SetDimLabel 0, 2, tau1, resCoefs
-		SetDimLabel 0, 3, A2, resCoefs
-		SetDimLabel 0, 4, tau2, resCoefs
-	else
-		Wave/Z resCoefs = root:Results:TrainAmp_fitCoefs
-		Redimension/N=(-1,-1,n+1) resCoefs
-	endif
-	dx = x1 - x0
-	V_FitMaxIters = 100
-	for(a=0; a<gTrainStim; a+=1)
-		SetDataFolder root:WorkData
-		fit_name = "fit_pulse"+num2str(a)
-		print "\r\n", fit_name
-		Duplicate/O w_temp, $fit_name
-		Wave tempFitWave = $fit_name
-		tempFitWave = NaN
-		WaveStats/Q/M=1/R=(x0+dx+a/gTrainfreq,x0+(a+1)/gTrainfreq) w_temp
-		Variable nudge = 0.0003		//Truncate start of fitting range by 300 us
-		Make/D/O/N=(5) w_fitCoef
-		//Make/T/O w_fitConstraintsWave={"K0 <"+num2str(post_pulse_baseline),"K0>"+num2str(1.1*w_temp(x0+(a+1)/gTrainfreq))}
-		//Wave w_constr = w_fitConstraintsWave
-		CurveFit/N=1 dblexp_XOffset kwCWave=w_fitCoef, w_temp(V_minLoc+nudge,x0+(a+1)/gTrainfreq) /D=$fit_name ///C=w_constr
-		
-		if(a==0)
-			resCoefs[,*][0][n] = w_fitCoef[p]
-			SetDimLabel 2, n, $gTheWave, resCoefs
-			SetDimLabel 1, a, $fit_name, resCoefs
+	// Fitting of each pulse (decay portion) and saving fit variables in multidimensional wave -AdrianGR
+	ControlInfo/W=NeuroBunny checkFitting
+	if(V_Value == 1)
+		if(WaveExists(root:Results:TrainAmp_fitCoefs)==0)
+			Make/D/N=(5,gTrainStim,n+1) root:Results:TrainAmp_fitCoefs
+			Wave resCoefs = root:Results:TrainAmp_fitCoefs
+			SetDimLabel 0, 0, y0, resCoefs
+			SetDimLabel 0, 1, A1, resCoefs
+			SetDimLabel 0, 2, tau1, resCoefs
+			SetDimLabel 0, 3, A2, resCoefs
+			SetDimLabel 0, 4, tau2, resCoefs
 		else
-			//InsertPoints/M=1 INF, 1, resCoefs
-			resCoefs[,*][a][n] = w_fitCoef[p]
-			SetDimLabel 1, a, $fit_name, resCoefs
+			Wave/Z resCoefs = root:Results:TrainAmp_fitCoefs
+			Redimension/N=(-1,-1,n+1) resCoefs
 		endif
-		AppendToGraph/W=Experiments $fit_name
+		dx = x1 - x0
+		V_FitMaxIters = 100
+		for(a=0; a<gTrainStim; a+=1)
+			SetDataFolder root:WorkData
+			fit_name = "fit_pulse"+num2str(a)
+			print "\r\n", fit_name
+			Duplicate/O w_temp, $fit_name
+			Wave tempFitWave = $fit_name
+			tempFitWave = NaN
+			WaveStats/Q/M=1/R=(x0+dx+a/gTrainfreq,x0+(a+1)/gTrainfreq) w_temp
+			Variable nudge = 0.0003		//Truncate start of fitting range by 300 us
+			Make/D/O/N=(5) w_fitCoef
+			//Make/T/O w_fitConstraintsWave={"K0 <"+num2str(post_pulse_baseline),"K0>"+num2str(1.1*w_temp(x0+(a+1)/gTrainfreq))}
+			//Wave w_constr = w_fitConstraintsWave
+			CurveFit/Q/N=1 dblexp_XOffset kwCWave=w_fitCoef, w_temp(V_minLoc+nudge,x0+(a+1)/gTrainfreq) /D=$fit_name ///C=w_constr
+			
+			if(a==0)
+				resCoefs[,*][0][n] = w_fitCoef[p]
+				SetDimLabel 2, n, $gTheWave, resCoefs
+				SetDimLabel 1, a, $fit_name, resCoefs
+			else
+				//InsertPoints/M=1 INF, 1, resCoefs
+				resCoefs[,*][a][n] = w_fitCoef[p]
+				SetDimLabel 1, a, $fit_name, resCoefs
+			endif
+			AppendToGraph/W=Experiments $fit_name
+		endfor
+	endif
+	
+	
+	
+	//WIP
+	for(a=999; a<gTrainstim; a+=1)
+		//SetDataFolder root:WorkData
+		String tempPulse = "tempPulse"+num2str(a)
+		Duplicate/O/R=(x0+dx+a/gTrainfreq,x0+(a+1)/gTrainfreq) w_temp, $tempPulse
+		
 	endfor
 	
 	
 	
-	
-	//Doesn't work properly. This section calculates AUCs/'charge', pretty much. -AdrianGR
+	//Doesn't work properly. This section should calculate AUCs/'charge', but old method (Trains_Charge()) is better atm. -AdrianGR
 	Duplicate/O w_temp, w_temp2														//Duplicate wave so we can subtract Init_baseline
 	w_temp2 = w_temp2 - Init_baseline												//Subtract Init_baseline
 	//Duplicate/O/RMD=[n][,*] w_resTrainAmp_ASyncLineX, w_tempASyncX
@@ -2497,15 +2517,60 @@ Function Trains_Amp()
 	
 	print "n =	", n
 	
-	//TODO: saving stuff in block below doesn't work properly because it doesn't take into account if there are multiple sweeps -AdrianGR
+	//Saving stuff in block below doesn't work properly because it doesn't take into account if there are multiple sweeps -AdrianGR
 	w_resExp[n]=experimentwave[gWaveindex]			//Save experiment name for future reference
 	w_resPro[n]=get_protocolname2(gTheWave)			//Save name of the protocol of the analyzed series
 	w_resFolder[n]=folder[gWaveindex]
+	
+	//New block for saving stuff (old block above) -AdrianGR
+	Wave/T w_extractedInfo = extractWaveListInfo()
+	w_resExp[n] = w_extractedInfo[%exper][gWaveindex]
+	w_resPro[n] = w_extractedInfo[%protocol][gWaveindex]
+	w_resFolder[n] = w_extractedInfo[%folder][gWaveindex]
 	
 //	ControlInfo /W=NeuroBunny checkAsyncTRAIN
 //		if (V_Value==1)
 		Trains_Charge()
 //		endif
+	
+	
+	if(WaveExists(root:WorkData:RTSR_data))
+		Wave CSyncCum = root:Results:TrainAmp_CSyncCum
+		SetDataFolder root:WorkData
+		Wave RTSRp = RTSR_params
+		Wave RTSRy = RTSR_data
+		Wave RTSRx = RTSRdelay_data
+		Variable includeInRTSR = RTSRp[0]
+		Variable RTSRnum = RTSRp[1]
+		Variable RTSRdelNum = RTSRp[2]
+		Variable RTSRdel = RTSRp[4+RTSRdelNum]
+		Variable RTSR_P = RTSRp[3]
+		
+		if(DimSize(RTSRy,1) < RTSRnum+1)
+			Redimension/N=(-1,RTSRnum+1,-1) RTSRy, RTSRx
+			RTSRy[][RTSRnum][] = RTSRy==0 ? NaN : RTSRy			//Shorthand way to say 'if value is zero, set to NaN, else leave as is'
+			RTSRx[][RTSRnum][] = RTSRx==0 ? NaN : RTSRx
+		endif
+		if(includeInRTSR == 1)
+			RTSRy[RTSRdelNum][RTSRnum][RTSR_P] = CSyncCum[n][INF]
+			RTSRy[RTSRdelNum][RTSRnum][0] = NaN
+		endif
+		if(includeInRTSR == 1 && RTSR_P == 2)
+			RTSRy[RTSRdelNum][RTSRnum][0] = RTSRy[RTSRdelNum][RTSRnum][2] / RTSRy[RTSRdelNum][RTSRnum][1]
+			RTSRx[RTSRdelNum][RTSRnum] = RTSRdel
+			String dimLabel = w_extractedInfo[%folderLast]+"_"+w_extractedInfo[%fileName]
+			SetDimLabel 1, RTSRnum, $dimLabel, RTSRy, RTSRx
+			Duplicate/O/RMD=[,*][,*][0] RTSRy, root:Results:TrainAmp_RTSRy
+			Redimension/N=(-1,-1,0) root:Results:TrainAmp_RTSRy
+			Duplicate/O RTSRx, root:Results:TrainAmp_RTSRx
+		endif
+		
+		
+	else
+		print "RTSR calculations not performed because necessary waves were not created first."
+	endif
+	
+	
 	ResumeUpdate
 //	SetAxis/A
 	SetDataFolder root:
@@ -4460,49 +4525,119 @@ Function displayGraphV2(inWave, [rowStart, rowEnd])
 End
 
 //TODO: fix this -AdrianGR
-Function extractSweepNum2(inString, [regExPattern])
+Function/WAVE extractWaveStrInfo(inString, [regExPattern])
 	String inString
 	String regExPattern
 	if(ParamIsDefault(regExPattern))
-		regExPattern = "^(x\d{1}X.+)_(\d{1})_(\d{1})_(\d{3})_(\d{1})_(.+)$"	//If RegEx pattern has not been supplied, default to this (made based on test string "x0X20Hz_50_9s_1_1_001_1_I-mon")
+		regExPattern = "^(x[0-9]{1}.+)_([0-9]{1})_([0-9]{1})_([0-9]{3})_([0-9]{1})_(.+)$"	//If RegEx pattern has not been supplied, default to this (made based on test string "x0X20Hz_50_9s_1_1_001_1_I-mon")
 	endif
-	String proStr, grStr, serStr, swStr, trStr, sigStr
+	String proStr, grStr, serStr, swStr, trStr, trNameStr
 	Variable sweepOutInt
 	
-	SplitString/E=regExPattern inString, proStr, grStr, serStr, swStr, trStr, sigStr
+	SplitString/E=(regExPattern) inString, proStr, grStr, serStr, swStr, trStr, trNameStr
 	if(V_flag != 6)
-		
+		print "not all matched"
 	endif
 	
-	Make/O/T tempWaveExtract = {proStr, grStr, serStr, swStr, trStr, sigStr}
-	Wave/T w = tempWaveExtract
+	Make/O/T tempWaveExtract = {proStr, grStr, serStr, swStr, trStr, trNameStr}
+	Wave/T tempWaveExtract
 	
+	return tempWaveExtract
 	
 	//return sweepOutInt
 End
 
-Function testF()
-//	Make/O/N=(1,1,1,1) tempWaveN
-//	Wave w = tempWaveN
-//	SetDimLabel 0, -1, trace, w
-//	SetDimLabel 1, -1, sweep, w
-//	SetDimLabel 2, -1, series, w
-//	SetDimLabel 3, -1, group, w
+Function/S get_singleRegExMatch(inString, regExPattern)
+	String inString
+	String regExPattern
+	String outStr
+	Variable sweepOutInt
 	
-	Make/O/N=(1,1,1,1) tempWaveN
-	Wave w = tempWaveN
-	SetDimLabel 0, -1, trace, w
-	SetDimLabel 1, -1, sweep, w
-	SetDimLabel 2, -1, series, w
-	SetDimLabel 3, -1, group, w
+	SplitString/E=(regExPattern) inString, outStr
+	if(V_flag < 1)
+		print "No RegEx match!"
+	endif
 	
+	return outStr
 End
 
-Function testQ()
-	Wave wibwob = $"x0X20Hz_50_9s_1_1_001_1_I-mon"
-	print wibwob(xcsr(B, "Experiments"))
-	print pnt2x(wibwob, 10060)
+Function/S getPMDatFileName(inWaveNameStr, [regExPattern])
+	String inWaveNameStr
+	String regExPattern
+	if(ParamIsDefault(regExPattern))
+		regExPattern = "PMDatFile.(c[0-9]{1,2}).dat"
+	endif
+	Wave leWave = root:OrigData:$inWaveNameStr
+	String noteStr = note(leWave)
+	String noteStr2 = StringFromList(1, noteStr,";")
+	String strOut
+	
+	SplitString/E=regExPattern noteStr2, strOut
+	
+	return strOut
 End
+
+Function/WAVE extractWaveListInfo()
+	SVAR gWaveList = root:Globals:gWaveList
+	Wave/T expW = root:experimentwave
+	Wave/T folderW = root:Data:folder
+	Variable numWaves = ItemsInList(gWaveList, ";")
+	Make/O/T/N=(11, numWaves) w_ExtractedInfo
+	Wave/T w_ExtractedInfo
+	
+	SetDimLabel 0, 0, protocol, w_ExtractedInfo
+	SetDimLabel 0, 1, group, w_ExtractedInfo
+	SetDimLabel 0, 2, series, w_ExtractedInfo
+	SetDimLabel 0, 3, sweep, w_ExtractedInfo
+	SetDimLabel 0, 4, trace, w_ExtractedInfo
+	SetDimLabel 0, 5, traceName, w_ExtractedInfo
+	SetDimLabel 0, 6, protocol, w_ExtractedInfo
+	SetDimLabel 0, 7, exper, w_ExtractedInfo
+	SetDimLabel 0, 8, folder, w_ExtractedInfo
+	SetDimLabel 0, 9, fileName, w_ExtractedInfo
+	SetDimLabel 0, 10, folderLast, w_ExtractedInfo
+	
+	Variable i
+	for(i=0; i<numWaves; i+=1)
+		String curWaveName = StringFromList(i,gWaveList,";")
+		Wave/T extractedInfo = extractWaveStrInfo(curWaveName)
+		SetDimLabel 1, i, $curWaveName, w_ExtractedInfo
+		w_ExtractedInfo[0,5][i] = extractedInfo[p]
+		w_ExtractedInfo[%protocol][i] = get_protocolname2(curWaveName)
+		w_ExtractedInfo[%fileName][i] = getPMDatFileName(curWaveName)
+	endfor
+	
+	Make/O/N=(4, numWaves) w_ExtractedInfoNumeric
+	Wave w_ExtractedInfoNumeric
+	w_ExtractedInfoNumeric[,*][,*] = str2num(w_ExtractedInfo[p+1][q])
+	SetDimLabel 0, 0, group, w_ExtractedInfoNumeric
+	SetDimLabel 0, 1, series, w_ExtractedInfoNumeric
+	SetDimLabel 0, 2, sweep, w_ExtractedInfoNumeric
+	SetDimLabel 0, 3, trace, w_ExtractedInfoNumeric
+	for(i=0; i<DimSize(w_ExtractedInfo,1); i+=1)
+		SetDimLabel 1, i, $GetDimLabel(w_ExtractedInfo, 1, i), w_ExtractedInfoNumeric
+	endfor
+	if(DimSize(w_ExtractedInfoNumeric, 1) < 2+DimSize(w_ExtractedInfo,1))
+		InsertPoints/M=1 INF, 2, w_ExtractedInfoNumeric
+		SetDimLabel 1, DimSize(w_ExtractedInfo,1), minimum, w_ExtractedInfoNumeric
+		SetDimLabel 1, DimSize(w_ExtractedInfo,1)+1, maximum, w_ExtractedInfoNumeric
+	endif
+	for(i=0; i<DimSize(w_ExtractedInfoNumeric,0); i+=1)
+		WaveStats/Q/RMD=[i][0,DimSize(w_ExtractedInfoNumeric, 1)-3] w_ExtractedInfoNumeric
+		w_ExtractedInfoNumeric[i][%minimum] = V_min
+		w_ExtractedInfoNumeric[i][%maximum] = V_max
+	endfor
+	
+	for(i=0; i<numWaves; i+=1)
+		Variable tempIndex = str2num(w_ExtractedInfo[%series][i]) - w_ExtractedInfoNumeric[%series][%minimum]
+		w_ExtractedInfo[%exper][i] = expW[tempIndex]
+		w_ExtractedInfo[%folder][i] = folderW[tempIndex]
+		w_ExtractedInfo[%folderLast][i] = get_singleRegExMatch(w_ExtractedInfo[%folder][i], "\W\W(?:[0-9]{1,4}.[0-9]{1,2}.[0-9]{1,2})\W\W(\w{1,10})\W\W")
+	endfor
+	
+	return w_ExtractedInfo
+End
+
 
 Function testIntegDiff(String choice)
 	SetDataFolder root:WorkData
@@ -4553,4 +4688,244 @@ Function removeAllTraces(graphWinNameStr)
 	endfor
 	
 	//print "now these traces are on graph: ", TraceNameList(graphWinNameStr,";",1)
+End
+
+
+Function get_InterTrainDelay(inStr, [regExPattern])
+	String inStr
+	String regExPattern
+	if(ParamIsDefault(regExPattern))
+		regExPattern = "^x[0-9]{1}.+_([0-9]{1,2})s_[0-9]{1}_[0-9]{1}_([0-9]{3})_[0-9]{1}_.+$"	//If RegEx pattern has not been supplied, default to this (made based on test string "x2X20Hz_50_9s_1_1_001_1_I-mon")
+	endif
+	String delayStr, sweepStr
+	
+	SplitString/E=regExPattern inStr, delayStr, sweepStr
+	
+	Variable delay = str2num(delayStr)
+	Variable sweep = str2num(sweepStr)
+	
+	return delay
+End
+
+
+
+//Create waves necessary for calculating 'recovery of total syncronous release' -AdrianGR
+Function makeRTSRwave(numDelays, delayVals)
+	Variable numDelays
+	String delayVals
+	if(numDelays != ItemsInList(delayVals,";"))
+		abort
+	endif
+	
+	DFREF saveDFR = GetDataFolderDFR()
+	SetDataFolder root:WorkData
+	
+	String/G root:Globals:gRTSRdelayValList = delayVals
+	Make/O/N=(numDelays,1,3) RTSR_data = NaN
+	SetDimLabel 2, 0, ratio, RTSR_data
+	SetDimLabel 2, 1, P1, RTSR_data
+	SetDimLabel 2, 2, P2, RTSR_data
+	Make/O/N=(numDelays,1) RTSRdelay_data = NaN
+	Make/O/N=(5) RTSR_params
+	SetDimLabel 0, 0, includeBool, RTSR_params
+	SetDimLabel 0, 1, number, RTSR_params
+	SetDimLabel 0, 2, delayNumber, RTSR_params
+	SetDimLabel 0, 3, P1P2, RTSR_params
+	Redimension/N=(DimSize(RTSR_params,0)+numDelays-1) RTSR_params
+	Variable i
+	for(i=0; i<numDelays; i+=1)
+		String dimLabel = "delay"+num2str(i)
+		SetDimLabel 0, DimSize(RTSR_params,0)-numDelays+i, $dimLabel, RTSR_params
+		RTSR_params[DimSize(RTSR_params,0)-numDelays+i] = str2num(StringFromList(i,delayVals,";"))
+	endfor
+	
+	SetDataFolder saveDFR
+End
+
+Function testNans()
+	SetDataFolder root:WorkData
+	//Duplicate/O RTSR_data, Rtemp
+	Wave Rtemp
+	//Redimension/N=(-1,2,-1) Rtemp
+	Rtemp[][1][0] = Rtemp==0 ? NaN : Rtemp
+End
+
+Function proc_button_initRTSRpanel(ctrlName) : ButtonControl
+	String ctrlName
+	init_RTSR_panel()
+End
+
+Function init_RTSR_panel()
+	SetDataFolder root:Globals
+	Variable/G gsv_RTSRnumDelays = 4
+	String/G gsv_RTSRdelayVals = "9;5;3;1"
+	Variable/G gcb_RTSRinclude = 0
+	Variable/G gsv_RTSRnumber = 0
+	Variable/G gcb_RTSR_P = 0
+	//SVAR/Z gRTSRdelayValList = root:Globals:gRTSRdelayValList
+	String/G gpop_RTSRdelay = "\"" + gsv_RTSRdelayVals + "\""
+	
+	PauseUpdate; Silent 1		// building window...
+	NewPanel/W=(20,750,220,955)/N=RTSR_panel/K=1
+	
+	SetVariable sv_RTSRnumDelays, pos={10,10}, size={180,20}, title="# of delays", value=gsv_RTSRnumDelays, limits={1,INF,1}, help={"Number of delay values."}
+	SetVariable sv_RTSRdelayVals, pos={10,35}, size={180,20}, title="Delay values", value=gsv_RTSRdelayVals, help={"List of delay values, separated by semicolon."}
+	Button btn_makeRTSR, pos={10,60}, size={180,20}, proc=proc_btn_makeRTSR, title="Make RTSR waves", help={"Click to create waves necessary for RTSR calculations."}
+	DrawLine 10,90,190,90
+	CheckBox cb_RTSRinclude, pos={10,100}, size={100,20}, title="Include in RTSR", variable=gcb_RTSRinclude, proc=proc_cb_RTSRinclude, help={"Check to include the train about to be analyzed in RTSR analysis."}
+	SetVariable sv_RTSRnumber, pos={10,125}, size={100,20}, title="Number", value=gsv_RTSRnumber, limits={0,INF,1}, proc=proc_sv_RTSRnumber, help={"Set 'number', can e.g. correspond to each new cell analyzed."}
+	PopupMenu pop_RTSRdelay, pos={10,150}, size={100,20}, title="Delay (s)", value=#gpop_RTSRdelay, proc=proc_pop_RTSRdelay, help={"Choose delay time. List is updated by shift+click."}
+	CheckBox cb_RTSR_P, pos={10,175}, size={100,20}, proc=proc_cb_RTSR_P, title="P1", variable=gcb_RTSR_P, help={"P1 when unchecked, P2 when checked. P1/P2 are two separate trains, separated by delay set above."}
+	
+	Variable/G gsv_A = 10000, gsv_B = 10066
+	SetVariable sv_A, align=1, pos={190,135}, size={60,20}, fsize=10, title="A", limits={0,INF,1}, value=gsv_A
+	SetVariable sv_B, align=1, pos={190,155}, size={60,20}, fsize=10, title="B", limits={0,INF,1}, value=gsv_B
+	Button btn_Magic, align=1, pos={190,175}, size={60,20}, fsize=10, title="Magic", proc=proc_btn_Magic
+End
+
+Function proc_btn_makeRTSR(ctrlName) : ButtonControl
+	String ctrlName
+	DoAlert 1, "Are you sure you want to create RTSR waves?\r\n(This will overwrite any previous ones in the current project.)"
+	if(V_flag == 2)
+		Abort
+	endif
+	NVAR gsv_RTSRnumDelays
+	SVAR gsv_RTSRdelayVals
+	//print gsv_numDelays,gsv_delayVals
+	makeRTSRwave(gsv_RTSRnumDelays,gsv_RTSRdelayVals)
+	
+	update_pop_RTSRdelay()
+End
+
+Function proc_cb_RTSR_P(CB_Struct) : CheckBoxControl
+	STRUCT WMCheckboxAction &CB_Struct
+	if(WaveExists(root:WorkData:RTSR_params)==0)
+		abort
+	endif
+	Wave RTSRp = root:WorkData:RTSR_params
+	
+	if(CB_Struct.eventCode == 2)
+		switch(CB_Struct.checked)
+			case 0:
+				CheckBox $CB_Struct.ctrlName, title="P1"
+				RTSRp[%P1P2] = 1
+				break
+			case 1:
+				CheckBox $CB_Struct.ctrlName, title="P2"
+				RTSRp[%P1P2] = 2
+				break
+		endswitch
+	endif
+	
+	return 0
+End
+
+Function proc_cb_RTSRinclude(CB_Struct) : CheckBoxControl
+	STRUCT WMCheckboxAction &CB_Struct
+	if(WaveExists(root:WorkData:RTSR_params)==0)
+		abort
+	endif
+	Wave RTSRp = root:WorkData:RTSR_params
+	
+	if(CB_Struct.eventCode == 2)
+		RTSRp[%includeBool] = CB_Struct.checked
+		if(CB_Struct.checked)
+			updateRTSRparamsFromGUI()
+		endif
+	endif
+	
+	return 0
+End
+
+Function proc_pop_RTSRdelay(PU_Struct) : PopupMenuControl
+	STRUCT WMPopupAction &PU_Struct
+	if(WaveExists(root:WorkData:RTSR_params)==0)
+		abort
+	endif
+	Wave RTSRp = root:WorkData:RTSR_params
+	
+	if(((PU_Struct.eventMod & 2^1) != 0)) //Shift+click updates popupmenu
+		update_pop_RTSRdelay()
+	endif
+	
+	if(PU_Struct.eventCode == 2)
+		RTSRp[%delayNumber] = PU_Struct.popNum-1
+	endif
+	
+	return 0
+End
+
+Function update_pop_RTSRdelay()
+	SVAR gpop_RTSRdelayValList = root:Globals:gRTSRdelayValList
+	SVAR gpop_RTSRdelay = root:Globals:gpop_RTSRdelay
+	gpop_RTSRdelay = "\"" + gpop_RTSRdelayValList + "\""
+	PopupMenu pop_RTSRdelay, value=#gpop_RTSRdelay
+End
+
+Function proc_sv_RTSRnumber(SV_Struct) : SetVariableControl
+	STRUCT WMSetVariableAction &SV_Struct
+	if(WaveExists(root:WorkData:RTSR_params)==0)
+		abort
+	endif
+	Wave RTSRp = root:WorkData:RTSR_params
+	
+	if(SV_Struct.eventCode == 1 || SV_Struct.eventCode == 2)
+		RTSRp[%number] = SV_Struct.dval
+	endif
+	
+	return 0
+End
+
+Function updateRTSRparamsFromGUI()
+	if(WaveExists(root:WorkData:RTSR_params)==0)
+		abort
+	endif
+	Wave RTSRp = root:WorkData:RTSR_params
+	
+	ControlInfo/W=RTSR_panel sv_RTSRnumber
+	RTSRp[%number] = V_Value
+	ControlInfo/W=RTSR_panel pop_RTSRdelay
+	RTSRp[%delayNumber] = V_Value - 1
+	ControlInfo/W=RTSR_panel cb_RTSR_P
+	RTSRp[%P1P2] = V_Value + 1
+End
+
+Function proc_btn_Magic(ctrlName) : ButtonControl
+	String ctrlName
+	SVAR gTheWave = root:Globals:gTheWave
+	NVAR gsv_A = root:Globals:gsv_A, gsv_B = root:Globals:gsv_B
+	
+	Variable del = get_InterTrainDelay(gTheWave)
+	
+	moveCursorsToPnt(Ap=gsv_A,Bp=gsv_B)
+End
+
+Function moveCursorsToPnt([Ap, Bp, Cp, Dp])
+	Variable Ap, Bp, Cp, Dp
+	SVAR gTheWave=root:Globals:gTheWave
+	NVAR gCursorA = root:Globals:gCursorA, gCursorB = root:Globals:gCursorB, gCursorC = root:Globals:gCursorC, gCursorD = root:Globals:gCursorD
+	DFREF saveDFR = GetDataFolderDFR()
+	
+	Variable x0, x1, x2, x3
+	
+	SetDataFolder root:OrigData		
+	x0=pnt2x($gTheWave,Ap)
+	x1=pnt2x($gTheWave,Bp)
+	x2=pnt2x($gTheWave,Cp)
+	x3=pnt2x($gTheWave,Dp)
+	
+	if(ParamIsDefault(Cp))
+		x2 = gCursorC
+	endif
+	if(ParamIsDefault(Dp))
+		x3 = gCursorD
+	endif
+	
+	
+	Cursor/C=(65535,0,0)/W=Experiments/H=1/S=1/L=1 A,$gTheWave,x0
+	Cursor/C=(65535,0,0)/W=Experiments/H=1/S=1/L=1 B,$gTheWave,x1
+	Cursor/C=(65535,33232,0)/W=Experiments/H=1/S=1/L=1 C,$gTheWave,x2
+	Cursor/C=(65535,33232,0)/W=Experiments/H=1/S=1/L=1 D,$gTheWave,x3
+	
+	SetDataFolder saveDFR
 End
