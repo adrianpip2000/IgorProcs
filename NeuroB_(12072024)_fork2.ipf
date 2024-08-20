@@ -92,6 +92,14 @@ Menu "NeuroBunny"
 
 End
 
+Menu "NeuroBunny"
+	Submenu "Special: Save or concat data"
+		"Concat data", testConcatData()
+		"Save", testSaveData(saveBool=1)
+	End
+End
+
+
 Menu "Graph"
 	"Stack Axes"
 	help= {"Stack all left axes in the current graph."}
@@ -2533,6 +2541,7 @@ Function Trains_Amp()
 	w_resFolder[n] = w_extractedInfo[%folder][gWaveindex]
 	Make/T/O/N=(DimSize(w_extractedInfo,1),DimSize(w_extractedInfo,0)) w_extractedInfo_T
 	w_extractedInfo_T[][] = w_extractedInfo[q][p]
+	Redimension/N=(n+1,DimSize(w_extractedInfo,0)) w_resExpAll
 	for(a=0; a<DimSize(w_extractedInfo,0); a+=1)
 		String dimLabel2 = GetDimLabel(w_extractedInfo,0,a)
 		SetDimLabel 1, a, $dimLabel2, w_extractedInfo_T
@@ -2542,7 +2551,6 @@ Function Trains_Amp()
 		String dimLabel3 = GetDimLabel(w_extractedInfo,1,a)
 		SetDimLabel 0, a, $dimLabel3, w_extractedInfo_T
 	endfor
-	Redimension/N=(n+1,DimSize(w_extractedInfo,0)) w_resExpAll
 	w_resExpAll[n][] = w_extractedInfo_T[gWaveindex][q]
 	
 //	ControlInfo /W=NeuroBunny checkAsyncTRAIN
@@ -2557,6 +2565,7 @@ Function Trains_Amp()
 		Wave RTSRp = RTSR_params
 		Wave RTSRy = RTSR_data
 		Wave RTSRx = RTSRdelay_data
+		Wave/T RTSRinfo = RTSRinfo
 		Variable includeInRTSR = RTSRp[0]
 		Variable RTSRnum = RTSRp[1]
 		Variable RTSRdelNum = RTSRp[2]
@@ -2577,9 +2586,16 @@ Function Trains_Amp()
 			RTSRx[RTSRdelNum][RTSRnum] = RTSRdel
 			String dimLabel = w_extractedInfo[%folderLast]+"_"+w_extractedInfo[%fileName]//+"_"+w_extractedInfo[%DayMonth]
 			SetDimLabel 1, RTSRnum, $dimLabel, RTSRy, RTSRx
-			Duplicate/O/RMD=[,*][,*][0] RTSRy, root:Results:TrainAmp_RTSRy
-			Redimension/N=(-1,-1,0) root:Results:TrainAmp_RTSRy
-			Duplicate/O RTSRx, root:Results:TrainAmp_RTSRx
+			Make/O/N=(DimSize(RTSRy,1),DimSize(RTSRy,0)) root:Results:TrainAmp_RTSRy/WAVE=w_resRTSRy
+			w_resRTSRy[][] = RTSRy[q][p][0]
+			//Duplicate/O/RMD=[,*][,*][0] RTSRy, root:Results:TrainAmp_RTSRy
+			//Redimension/N=(-1,-1,0) root:Results:TrainAmp_RTSRy
+			Make/O/N=(DimSize(RTSRx,1),DimSize(RTSRx,0)) root:Results:TrainAmp_RTSRx/WAVE=w_resRTSRx
+			w_resRTSRx[][] = RTSRx[q][p]
+			//Duplicate/O RTSRx, root:Results:TrainAmp_RTSRx
+			Redimension/N=(RTSRnum+1,DimSize(w_resExpAll,1)) RTSRinfo
+			RTSRinfo[RTSRnum][] = w_resExpAll[n][q]
+			Duplicate/O RTSRinfo, root:Results:TrainAmp_RTSRinfo
 		endif
 		
 		
@@ -4598,7 +4614,7 @@ Function/S getPMSweepTimeDate(inWaveNameStr, [regExPattern])
 	String inWaveNameStr
 	String regExPattern
 	if(ParamIsDefault(regExPattern))
-		regExPattern = "PMSweepTime.....(\w{3})\s(\d{1,2})\s(\d{4})"
+		regExPattern = "PMSweepTime.....(\\w{3})\s(\\d{1,2})\\s(\\d{4})"
 	endif
 	Wave leWave = root:OrigData:$inWaveNameStr
 	String noteStr = note(leWave)
@@ -4610,6 +4626,25 @@ Function/S getPMSweepTimeDate(inWaveNameStr, [regExPattern])
 	String strOut = strOutDay + strOutMonth
 	
 	return strOut
+End
+
+Function getPMcapacitance(inWaveNameStr, [regExPattern])
+	String inWaveNameStr
+	String regExPattern
+	if(ParamIsDefault(regExPattern))
+		regExPattern = "PMCm.([0-9].[0-9]{1,6}e.?[0-9]{3}).*"
+	endif
+	Wave leWave = root:OrigData:$inWaveNameStr
+	String noteStr = note(leWave)
+	String noteStr2 = StringFromList(15, noteStr,";")
+	String strOut
+	
+	SplitString/E=regExPattern noteStr2, strOut
+	//print V_flag
+	
+	Variable strOutNum = str2num(strOut)
+	
+	return strOutNum
 End
 
 Function/WAVE extractWaveListInfo()
@@ -4803,6 +4838,8 @@ Function makeRTSRwave(numDelays, delayVals)
 		RTSR_params[DimSize(RTSR_params,0)-numDelays+i] = str2num(StringFromList(i,delayVals,";"))
 	endfor
 	
+	Make/T/O RTSRinfo
+	
 	SetDataFolder saveDFR
 End
 
@@ -4962,6 +4999,9 @@ Function proc_btn_Magic(ctrlName) : ButtonControl
 	Variable del = get_InterTrainDelay(gTheWave)
 	
 	moveCursorsToPnt(Ap=gsv_A,Bp=gsv_B)
+	
+	SetAxis/W=Experiments left, -4e-9,5e-10
+	SetAxis/W=Experiments bottom, 0.495,0.53
 End
 
 Function moveCursorsToPnt([Ap, Bp, Cp, Dp])
@@ -5008,35 +5048,28 @@ Function/WAVE testInitSaveData()
 		NewDataFolder root:ResultsConcat
 	endif
 	SetDataFolder root:ResultsConcat
-//	Make/WAVE/N=(13) saveWavesWave
-//	Wave/WAVE sWW = saveWavesWave
+	
 	DFREF saveRefHere = root:ResultsConcat
 	DFREF wavesHere = root:Results
 	Wave/WAVE sWW = testMakeSaveWavesWave(wavesHere, saveRefHere, "saveWavesWave")
-//	SetDataFolder here
-//	SetDataFolder root:Results
-//	sWW[0] = TrainExperiment_allInfo
-//	sWW[1] = TrainsAmp_fromInitBaseline
-//	sWW[2] = TrainsAmp_fromInitBaseline_Norm
-//	sWW[3] = TrainsAmp_Sync
-//	sWW[4] = TrainsAmp_Sync_Norm
-//	sWW[5] = TrainsAmp_ASync
-//	sWW[6] = TrainsAmp_ASync_Norm
-//	sWW[7] = TrainsAmp_CSync
-//	sWW[8] = TrainsAmp_CSyncCum
-//	sWW[9] = TrainsAmp_CASync
-//	sWW[10] = TrainsAmp_CASyncCum
-//	sWW[11] = TrainsAmp_RTSRx
-//	sWW[12] = TrainsAmp_RTSRy
+
 	return sWW
 End
 
-Function/WAVE testSaveData()
+Function/WAVE testSaveData([saveBool])
+	Variable saveBool
+	if(ParamIsDefault(saveBool))
+		saveBool = 0
+	endif
+	
 	Wave/WAVE sWW = testInitSaveData()
+	abortOnZeroInWaveRefWave(sWW)
 	String saveWavesList = WaveRefWaveToList(sWW,0)
 	
-	Save/J/M="\r\n"/I/B/P=savePathDA1/W/U={1,0,1,0} saveWavesList as "testAll.txt"
-	Save/T/M="\r\n"/I/B/P=savePathDA1 saveWavesList as "testAll.itx"
+	if(saveBool == 1)
+		Save/T/M="\r\n"/I/B/P=home saveWavesList as "ThisAnalysis.itx"
+		Save/J/M="\r\n"/I/B/P=home/W/U={1,0,1,0} saveWavesList as "ThisAnalysis.txt"
+	endif
 	return sWW
 End
 
@@ -5055,44 +5088,85 @@ Function/WAVE testLoadData()
 	DFREF saveRefHere = wavesHere
 	SetDataFolder wavesHere
 	
-	LoadWave/T/I/P=savePathDA1 "testAll.itx"
+	LoadWave/T/O/I/P=savePathDA1 "AllAnalyses.itx"
 	
 	Wave/WAVE sWW_loaded = testMakeSaveWavesWave(wavesHere, saveRefHere, "saveWavesWave_loaded")
 	SetDataFolder wavesHere
 	return sWW_loaded
 End
 
-Function testConcatData()
+Function testConcatData([saveRes])
+	Variable saveRes
+	if(ParamIsDefault(saveRes))
+		saveRes = 1
+	endif
+	DoAlert 1, "Continue with data concatenation?"
+	if(V_flag == 2)
+		Abort
+	endif
+	
 	Wave/WAVE sWW = testSaveData()
 	Wave/WAVE sWW_loaded = testLoadData()
 	SetDataFolder root:ResultsConcat
+	if(DataFolderExists("out")==0)
+		NewDataFolder :out
+	endif
 	
-	Concatenate/O/NP=0 {sWW_loaded[0], sWW[0]}, sWW_concat
+	Duplicate/O/WAVE sWW_loaded, :out:sWW_out/WAVE=sWW_out
 	
+	Variable i
+	for(i=0; i<DimSize(sWW_loaded,0); i+=1)
+		String tempWaveName = NameOfWave(sWW_loaded[i])
+		Duplicate/O sWW_loaded[i], :out:$tempWaveName
+		Concatenate/O/DL/NP=0 {sWW_loaded[i], sWW[i]}, :out:$tempWaveName/WAVE=sWWi
+		sWW_out[i] = sWWi
+	endfor
+	
+	if(saveRes == 1)
+		String saveWavesList = WaveRefWaveToList(sWW_out,0)
+		Save/T/M="\r\n"/I/B/P=savePathDA1 saveWavesList as "AllAnalyses.itx"
+		Save/J/M="\r\n"/I/B/P=savePathDA1/W/U={1,0,1,0} saveWavesList as "AllAnalyses.txt"
+	endif
 	
 End
 
 Function/WAVE testMakeSaveWavesWave(DFREF wavesAreHere, DFREF saveRefHere, String saveName)
 	SetDataFolder saveRefHere
-	Make/WAVE/O/N=(13) $saveName
+	Make/WAVE/O/N=(19) $saveName
 	Wave/WAVE sWW = $saveName
 	
 	SetDataFolder wavesAreHere
-	sWW[0] = TrainExperiment_allInfo
-	sWW[1] = TrainsAmp_fromInitBaseline
-	sWW[2] = TrainsAmp_fromInitBaseline_Norm
-	sWW[3] = TrainsAmp_Sync
-	sWW[4] = TrainsAmp_Sync_Norm
-	sWW[5] = TrainsAmp_ASync
-	sWW[6] = TrainsAmp_ASync_Norm
-	sWW[7] = TrainsAmp_CSync
-	sWW[8] = TrainsAmp_CSyncCum
-	sWW[9] = TrainsAmp_CASync
-	sWW[10] = TrainsAmp_CASyncCum
-	sWW[11] = TrainsAmp_RTSRx
-	sWW[12] = TrainsAmp_RTSRy
+	sWW[0] = $"TrainExperiments_allInfo"
+	sWW[1] = $"TrainAmp_fromInitBaseline"
+	sWW[2] = $"TrainAmp_fromInitBaseline_Norm"
+	sWW[3] = $"TrainAmp_All"
+	sWW[4] = $"TrainAmp_corrected"
+	sWW[5] = $"TrainAmp_Delay"
+	sWW[6] = $"TrainAmp_RecovAmpFrac"
+	sWW[7] = $"TrainAmp_Sync"
+	sWW[8] = $"TrainAmp_Sync_Norm"
+	sWW[9] = $"TrainAmp_CTimepoints"
+	sWW[10] = $"TrainAmp_CAll"
+	sWW[11] = $"TrainAmp_CCum"
+	sWW[12] = $"TrainAmp_CSync"
+	sWW[13] = $"TrainAmp_CSyncCum"
+	sWW[14] = $"TrainAmp_CASync"
+	sWW[15] = $"TrainAmp_CASyncCum"
+	sWW[16] = $"TrainAmp_RTSRx"
+	sWW[17] = $"TrainAmp_RTSRy"
+	sWW[18] = $"TrainAmp_RTSRinfo"
 	
 	SetDataFolder saveRefHere
 	
 	return sWW
+End
+
+Function abortOnZeroInWaveRefWave(inWave)
+	Wave/WAVE inWave
+	Variable i
+	for(i=0; i<DimSize(inWave,0); i+=1)
+		if(inWave[i] == 0)
+			Abort "One or more wave references missing"
+		endif
+	endfor
 End
