@@ -2196,6 +2196,9 @@ Function Trains_Amp()
 	if (WaveExists('TrainAmp_RecovAmpFrac')==0)	//Wave for saving ... -AdrianGR
 		Make/N=(1,cols) 'TrainAmp_RecovAmpFrac'
 	endif
+	if (WaveExists('TrainExperiments_allInfo')==0)		//Wave for saving lots of info -AdrianGR
+		Make/T/N=(1,1) 'TrainExperiments_allInfo'
+	endif
 	
 	
 	
@@ -2239,6 +2242,7 @@ Function Trains_Amp()
 	Wave w_resTrainAmp_SyncAUC_cumulative = root:Results:TrainAmp_SyncAUC_cumulative
 	Wave w_resCTimepoints = root:Results:TrainAmp_CTimepoints
 	Wave w_resRecAF = root:Results:TrainAmp_RecovAmpFrac
+	Wave/T w_resExpAll = root:Results:TrainExperiments_allInfo
 	
 	
 	//Wave w_
@@ -2518,15 +2522,28 @@ Function Trains_Amp()
 	print "n =	", n
 	
 	//Saving stuff in block below doesn't work properly because it doesn't take into account if there are multiple sweeps -AdrianGR
-	w_resExp[n]=experimentwave[gWaveindex]			//Save experiment name for future reference
-	w_resPro[n]=get_protocolname2(gTheWave)			//Save name of the protocol of the analyzed series
-	w_resFolder[n]=folder[gWaveindex]
+	//w_resExp[n]=experimentwave[gWaveindex]			//Save experiment name for future reference
+	//w_resPro[n]=get_protocolname2(gTheWave)			//Save name of the protocol of the analyzed series
+	//w_resFolder[n]=folder[gWaveindex]
 	
 	//New block for saving stuff (old block above) -AdrianGR
 	Wave/T w_extractedInfo = extractWaveListInfo()
 	w_resExp[n] = w_extractedInfo[%exper][gWaveindex]
 	w_resPro[n] = w_extractedInfo[%protocol][gWaveindex]
 	w_resFolder[n] = w_extractedInfo[%folder][gWaveindex]
+	Make/T/O/N=(DimSize(w_extractedInfo,1),DimSize(w_extractedInfo,0)) w_extractedInfo_T
+	w_extractedInfo_T[][] = w_extractedInfo[q][p]
+	for(a=0; a<DimSize(w_extractedInfo,0); a+=1)
+		String dimLabel2 = GetDimLabel(w_extractedInfo,0,a)
+		SetDimLabel 1, a, $dimLabel2, w_extractedInfo_T
+		SetDimLabel 1, a, $dimLabel2, w_resExpAll
+	endfor
+	for(a=0; a<DimSize(w_extractedInfo,1); a+=1)
+		String dimLabel3 = GetDimLabel(w_extractedInfo,1,a)
+		SetDimLabel 0, a, $dimLabel3, w_extractedInfo_T
+	endfor
+	Redimension/N=(n+1,DimSize(w_extractedInfo,0)) w_resExpAll
+	w_resExpAll[n][] = w_extractedInfo_T[gWaveindex][q]
 	
 //	ControlInfo /W=NeuroBunny checkAsyncTRAIN
 //		if (V_Value==1)
@@ -2558,7 +2575,7 @@ Function Trains_Amp()
 		if(includeInRTSR == 1 && RTSR_P == 2)
 			RTSRy[RTSRdelNum][RTSRnum][0] = RTSRy[RTSRdelNum][RTSRnum][2] / RTSRy[RTSRdelNum][RTSRnum][1]
 			RTSRx[RTSRdelNum][RTSRnum] = RTSRdel
-			String dimLabel = w_extractedInfo[%folderLast]+"_"+w_extractedInfo[%fileName]
+			String dimLabel = w_extractedInfo[%folderLast]+"_"+w_extractedInfo[%fileName]//+"_"+w_extractedInfo[%DayMonth]
 			SetDimLabel 1, RTSRnum, $dimLabel, RTSRy, RTSRx
 			Duplicate/O/RMD=[,*][,*][0] RTSRy, root:Results:TrainAmp_RTSRy
 			Redimension/N=(-1,-1,0) root:Results:TrainAmp_RTSRy
@@ -4577,12 +4594,31 @@ Function/S getPMDatFileName(inWaveNameStr, [regExPattern])
 	return strOut
 End
 
+Function/S getPMSweepTimeDate(inWaveNameStr, [regExPattern])
+	String inWaveNameStr
+	String regExPattern
+	if(ParamIsDefault(regExPattern))
+		regExPattern = "PMSweepTime.....(\w{3})\s(\d{1,2})\s(\d{4})"
+	endif
+	Wave leWave = root:OrigData:$inWaveNameStr
+	String noteStr = note(leWave)
+	String noteStr2 = StringFromList(3, noteStr,";")
+	String strOutMonth, strOutDay, strOutYear
+	
+	SplitString/E=regExPattern noteStr2, strOutMonth, strOutDay, strOutYear
+	
+	String strOut = strOutDay + strOutMonth
+	
+	return strOut
+End
+
 Function/WAVE extractWaveListInfo()
 	SVAR gWaveList = root:Globals:gWaveList
 	Wave/T expW = root:experimentwave
+	Wave/T proW = root:protocolwave
 	Wave/T folderW = root:Data:folder
 	Variable numWaves = ItemsInList(gWaveList, ";")
-	Make/O/T/N=(11, numWaves) w_ExtractedInfo
+	Make/O/T/N=(12, numWaves) w_ExtractedInfo
 	Wave/T w_ExtractedInfo
 	
 	SetDimLabel 0, 0, protocol, w_ExtractedInfo
@@ -4596,6 +4632,7 @@ Function/WAVE extractWaveListInfo()
 	SetDimLabel 0, 8, folder, w_ExtractedInfo
 	SetDimLabel 0, 9, fileName, w_ExtractedInfo
 	SetDimLabel 0, 10, folderLast, w_ExtractedInfo
+	SetDimLabel 0, 11, DayMonth, w_ExtractedInfo
 	
 	Variable i
 	for(i=0; i<numWaves; i+=1)
@@ -4605,6 +4642,7 @@ Function/WAVE extractWaveListInfo()
 		w_ExtractedInfo[0,5][i] = extractedInfo[p]
 		w_ExtractedInfo[%protocol][i] = get_protocolname2(curWaveName)
 		w_ExtractedInfo[%fileName][i] = getPMDatFileName(curWaveName)
+		w_ExtractedInfo[%DayMonth][i] = getPMSweepTimeDate(curWaveName)
 	endfor
 	
 	Make/O/N=(4, numWaves) w_ExtractedInfoNumeric
@@ -4628,11 +4666,22 @@ Function/WAVE extractWaveListInfo()
 		w_ExtractedInfoNumeric[i][%maximum] = V_max
 	endfor
 	
+	//This loop is pretty hardcoded, so will only work for pairs of sweeps, but that doesn't matter too much since the info is also elsewhere -AdrianGR
+	Variable tempIndex, tempIndex_cache
 	for(i=0; i<numWaves; i+=1)
-		Variable tempIndex = str2num(w_ExtractedInfo[%series][i]) - w_ExtractedInfoNumeric[%series][%minimum]
+		//Variable tempIndex = str2num(w_ExtractedInfo[%series][i]) - w_ExtractedInfoNumeric[%series][%minimum]
+		//tempIndex = i
+		if(str2num(w_ExtractedInfo[%sweep][i]) == 2)
+			tempIndex = tempIndex_cache
+			//print "sweep is ", str2num(w_ExtractedInfo[%sweep][i]), "set index to ", tempIndex
+		else
+			tempIndex = i/2
+			//print "index ", tempIndex
+		endif
 		w_ExtractedInfo[%exper][i] = expW[tempIndex]
 		w_ExtractedInfo[%folder][i] = folderW[tempIndex]
 		w_ExtractedInfo[%folderLast][i] = get_singleRegExMatch(w_ExtractedInfo[%folder][i], "\W\W(?:[0-9]{1,4}.[0-9]{1,2}.[0-9]{1,2})\W\W(\w{1,10})\W\W")
+		tempIndex_cache = tempIndex
 	endfor
 	
 	return w_ExtractedInfo
@@ -4641,29 +4690,44 @@ End
 
 Function testIntegDiff(String choice)
 	SetDataFolder root:WorkData
-	Duplicate/O WaveRefIndexed("Experiments", 0, 1), w_tempp
-	Wave wt = w_tempp
+	Duplicate/O WaveRefIndexed("Experiments", 0, 1), w_temp_2
+	Wave wt = w_temp_2
 	//w_tempp = -w_tempp
-	Duplicate/O wt, w_tempp2
-	Wave wt2 = w_tempp2
+	Duplicate/O wt, w_temp_2_DI
+	Wave wt2 = w_temp_2_DI
 	wt2 = 0
 	
 	strswitch(choice)
 		case "int":
 		case "integrate":
 			Integrate/METH=1 wt /D=wt2
-			SetScale d 0,0,"C", w_tempp2
+			SetScale d 0,0,"C", wt2
 			break
 		case "diff":
 		case "differentiate":
 			Differentiate/METH=1 wt /D=wt2
-			SetScale d 0,0,"A/S", w_tempp2
+			SetScale d 0,0,"A/S", wt2
 			break
 	endswitch
 	
 	
-	Display/K=1 wt2
+	Display/K=1/N=DiffIntWin wt2
+	Cursor/C=(65535,0,0)/W=DiffIntWin/H=1/S=1/L=1 B,w_temp_2_DI,0
 	AppendToGraph/R/C=(0,30000,10000) wt
+	
+	SetWindow DiffIntWin hook(myHook)=testCursorMovedHook
+End
+
+Function testCursorMovedHook(s)
+	STRUCT WMWinHookStruct &s
+	strswitch(s.eventName)
+		case "cursormoved":
+			Variable p1 = pcsr(B,s.winName)
+			moveCursorsToPnt(Bp=p1)
+			break
+	endswitch
+	
+	return 0
 End
 
 Function testIns()
@@ -4913,7 +4977,14 @@ Function moveCursorsToPnt([Ap, Bp, Cp, Dp])
 	x1=pnt2x($gTheWave,Bp)
 	x2=pnt2x($gTheWave,Cp)
 	x3=pnt2x($gTheWave,Dp)
+	gCursorA = x0
 	
+	if(ParamIsDefault(Ap))
+		x0 = gCursorA
+	endif
+	if(ParamIsDefault(Bp))
+		x1 = gCursorB
+	endif
 	if(ParamIsDefault(Cp))
 		x2 = gCursorC
 	endif
@@ -4922,10 +4993,106 @@ Function moveCursorsToPnt([Ap, Bp, Cp, Dp])
 	endif
 	
 	
-	Cursor/C=(65535,0,0)/W=Experiments/H=1/S=1/L=1 A,$gTheWave,x0
+	Cursor/C=(65535,0,0)/W=Experiments/H=1/S=1/L=1 A,$gTheWave,gCursorA
 	Cursor/C=(65535,0,0)/W=Experiments/H=1/S=1/L=1 B,$gTheWave,x1
 	Cursor/C=(65535,33232,0)/W=Experiments/H=1/S=1/L=1 C,$gTheWave,x2
 	Cursor/C=(65535,33232,0)/W=Experiments/H=1/S=1/L=1 D,$gTheWave,x3
 	
 	SetDataFolder saveDFR
+End
+
+Function/WAVE testInitSaveData()
+	testInitSavePath()
+	SetDataFolder root:
+	if(DataFolderExists("ResultsConcat")==0)
+		NewDataFolder root:ResultsConcat
+	endif
+	SetDataFolder root:ResultsConcat
+//	Make/WAVE/N=(13) saveWavesWave
+//	Wave/WAVE sWW = saveWavesWave
+	DFREF saveRefHere = root:ResultsConcat
+	DFREF wavesHere = root:Results
+	Wave/WAVE sWW = testMakeSaveWavesWave(wavesHere, saveRefHere, "saveWavesWave")
+//	SetDataFolder here
+//	SetDataFolder root:Results
+//	sWW[0] = TrainExperiment_allInfo
+//	sWW[1] = TrainsAmp_fromInitBaseline
+//	sWW[2] = TrainsAmp_fromInitBaseline_Norm
+//	sWW[3] = TrainsAmp_Sync
+//	sWW[4] = TrainsAmp_Sync_Norm
+//	sWW[5] = TrainsAmp_ASync
+//	sWW[6] = TrainsAmp_ASync_Norm
+//	sWW[7] = TrainsAmp_CSync
+//	sWW[8] = TrainsAmp_CSyncCum
+//	sWW[9] = TrainsAmp_CASync
+//	sWW[10] = TrainsAmp_CASyncCum
+//	sWW[11] = TrainsAmp_RTSRx
+//	sWW[12] = TrainsAmp_RTSRy
+	return sWW
+End
+
+Function/WAVE testSaveData()
+	Wave/WAVE sWW = testInitSaveData()
+	String saveWavesList = WaveRefWaveToList(sWW,0)
+	
+	Save/J/M="\r\n"/I/B/P=savePathDA1/W/U={1,0,1,0} saveWavesList as "testAll.txt"
+	Save/T/M="\r\n"/I/B/P=savePathDA1 saveWavesList as "testAll.itx"
+	return sWW
+End
+
+Function testInitSavePath()
+	NewPath/O savePathDA1 "C:Users:kzw421:Desktop:Adrian G R:ephys recordings:Data analysis 1:"
+End
+
+Function/WAVE testLoadData()
+	testInitSavePath()
+	SetDataFolder root:
+	if(DataFolderExists("ResultsConcat")==0)
+		NewDataFolder root:ResultsConcat
+	endif
+	
+	DFREF wavesHere = root:ResultsConcat
+	DFREF saveRefHere = wavesHere
+	SetDataFolder wavesHere
+	
+	LoadWave/T/I/P=savePathDA1 "testAll.itx"
+	
+	Wave/WAVE sWW_loaded = testMakeSaveWavesWave(wavesHere, saveRefHere, "saveWavesWave_loaded")
+	SetDataFolder wavesHere
+	return sWW_loaded
+End
+
+Function testConcatData()
+	Wave/WAVE sWW = testSaveData()
+	Wave/WAVE sWW_loaded = testLoadData()
+	SetDataFolder root:ResultsConcat
+	
+	Concatenate/O/NP=0 {sWW_loaded[0], sWW[0]}, sWW_concat
+	
+	
+End
+
+Function/WAVE testMakeSaveWavesWave(DFREF wavesAreHere, DFREF saveRefHere, String saveName)
+	SetDataFolder saveRefHere
+	Make/WAVE/O/N=(13) $saveName
+	Wave/WAVE sWW = $saveName
+	
+	SetDataFolder wavesAreHere
+	sWW[0] = TrainExperiment_allInfo
+	sWW[1] = TrainsAmp_fromInitBaseline
+	sWW[2] = TrainsAmp_fromInitBaseline_Norm
+	sWW[3] = TrainsAmp_Sync
+	sWW[4] = TrainsAmp_Sync_Norm
+	sWW[5] = TrainsAmp_ASync
+	sWW[6] = TrainsAmp_ASync_Norm
+	sWW[7] = TrainsAmp_CSync
+	sWW[8] = TrainsAmp_CSyncCum
+	sWW[9] = TrainsAmp_CASync
+	sWW[10] = TrainsAmp_CASyncCum
+	sWW[11] = TrainsAmp_RTSRx
+	sWW[12] = TrainsAmp_RTSRy
+	
+	SetDataFolder saveRefHere
+	
+	return sWW
 End
