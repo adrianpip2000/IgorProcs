@@ -1864,6 +1864,25 @@ Function Trains_Charge()
 		if (WaveExists(TrainAmp_CASyncCum)==0)
 			Make/N=(1,cols) TrainAmp_CASyncCum
 		endif
+		if (WaveExists(TrainAmp_Csync_PPR)==0)
+			Make/N=(1,cols) TrainAmp_Csync_PPR
+		endif
+		if (WaveExists(TrainAmp_CAsync_PPR)==0)
+			Make/N=(1,cols) TrainAmp_CAsync_PPR
+		endif
+		if (WaveExists(TrainAmp_CAll_PPR)==0)
+			Make/N=(1,cols) TrainAmp_CAll_PPR
+		endif
+		if (WaveExists(TrainAmp_CCum_PPR)==0)
+			Make/N=(1,cols) TrainAmp_CCum_PPR
+		endif
+		if (WaveExists(TrainAmp_CSyncCum_PPR)==0)
+			Make/N=(1,cols) TrainAmp_CSyncCum_PPR
+		endif
+		if (WaveExists(TrainAmp_CASyncCum_PPR)==0)
+			Make/N=(1,cols) TrainAmp_CASyncCum_PPR
+		endif
+		
 	SetDataFolder root:Results:Backextr		
 		if (WaveExists(TrainBackextr_RRP)==0)
 			Make/N=(1) TrainBackextr_RRP
@@ -1890,6 +1909,12 @@ Function Trains_Charge()
 		wave/Z w_Cumresults=root:Results:TrainAmp_CCum						//Cumulative charge, syncronous+asyncronous
 		wave/Z w_SyncCumresults=root:Results:TrainAmp_CSyncCum				//Cumulative charge, syncronous
 		wave/Z w_ASyncCumresults=root:Results:TrainAmp_CASyncCum			//Cumulative charge, asyncronous
+		wave/Z w_resultsPPR=root:Results:TrainAmp_Csync_PPR					//PPR, Charge, syncronous
+		wave/Z w_AresultsPPR=root:Results:TrainAmp_CAsync_PPR				//PPR, Charge, asyncronous
+		wave/Z w_AllresultsPPR=root:Results:TrainAmp_CAll_PPR				//PPR, Charge, syncronous+asyncronous
+		wave/Z w_CumresultsPPR=root:Results:TrainAmp_CCum_PPR				//PPR, Cumulative charge, syncronous+asyncronous
+		wave/Z w_SyncCumresultsPPR=root:Results:TrainAmp_CSyncCum_PPR		//PPR, Cumulative charge, syncronous
+		wave/Z w_ASyncCumresultsPPR=root:Results:TrainAmp_CASyncCum_PPR	//PPR, Cumulative charge, asyncronous
 		wave/Z w_BExtrRRP=root:Results:Backextr:TrainBackextr_RRP
 		wave/Z w_BExtrPrate=root:Results:Backextr:TrainBackextr_Prate
 		wave/Z w_BExtrRelPr=root:Results:Backextr:TrainBackextr_RelPr
@@ -1899,6 +1924,7 @@ Function Trains_Charge()
 		
 		n=DimSize(w_results,0)+1
 		Redimension/N=(n,-1) w_results, w_Aresults, w_Allresults, w_Cumresults, w_SyncCumresults, w_ASyncCumresults
+		Redimension/N=(n,-1) w_resultsPPR, w_AresultsPPR, w_AllresultsPPR, w_CumresultsPPR, w_SyncCumresultsPPR, w_ASyncCumresultsPPR
 		Redimension/N=(n,-1) w_BExtrRRP, w_BExtrPrate,  w_BExtrRelPr, w_BExtrRelOK
 		j=0
 		do
@@ -1933,6 +1959,13 @@ Function Trains_Charge()
 		w_Cumresults[n-1][,*] *= -1
 		w_SyncCumresults[n-1][,*] *= -1
 		w_ASyncCumresults[n-1][,*] *= -1
+		
+		w_resultsPPR[n-1][1,*] = w_results[n-1][q] / w_results[n-1][q-1]
+		w_AresultsPPR[n-1][1,*] = w_Aresults[n-1][q] / w_Aresults[n-1][q-1]
+		w_AllresultsPPR[n-1][1,*] = w_Allresults[n-1][q] / w_Allresults[n-1][q-1]
+		w_CumresultsPPR[n-1][1,*] = w_Cumresults[n-1][q] / w_Cumresults[n-1][q-1]
+		w_SyncCumresultsPPR[n-1][1,*] = w_SyncCumresults[n-1][q] / w_SyncCumresults[n-1][q-1]
+		w_ASyncCumresultsPPR[n-1][1,*] = w_ASyncCumresults[n-1][q] / w_ASyncCumresults[n-1][q-1]
 		
 		ControlInfo /W=NeuroBunny checkAsyncTRAIN
 		if (V_Value==1)
@@ -1985,7 +2018,7 @@ Function/S get_protocolname2(gTheWave_str, [regExPattern])
 	String gTheWave_str
 	String regExPattern
 	if(ParamIsDefault(regExPattern))
-		regExPattern = "^x[0-9]{1}X?(.+)_\d{1}_\d{1}_\d{3}_\d{1}_.+$"	//If RegEx pattern has not been supplied, default to this (made based on test string "x2X20Hz_50_9s_1_1_001_1_I-mon")
+		regExPattern = "^x[0-9]{1,2}X?(.+)_[0-9]{1,2}_[0-9]{1,2}_[0-9]{3}_[0-9]{1,2}_.+$"	//If RegEx pattern has not been supplied, default to this (made based on test string "x2X20Hz_50_9s_1_1_001_1_I-mon")
 	endif
 	string p
 	
@@ -1995,22 +2028,6 @@ Function/S get_protocolname2(gTheWave_str, [regExPattern])
 	endif
 	
 	return p
-End
-
-// Extract frequency information from string -AdrianGR
-Function getStringFreqssssad(inString)
-	String inString
-	String regExPattern = "([0-9]{1,3})(.?)([Hh]z)" //Matches e.g. "20Hz", "20 Hz", "200_hz" etc.
-	String outFreq = ""
-	
-	SplitString/E=regExPattern inString, outFreq
-	if(V_flag==3)
-		print("Extracted frequency is: "+outFreq+" Hz")
-		return str2num(outFreq)
-	else
-		print("Could not extract frequency, defaulted to 50 Hz")
-		return 50
-	endif
 End
 
 
@@ -2207,6 +2224,15 @@ Function Trains_Amp()
 	if (WaveExists('TrainExperiments_allInfo')==0)		//Wave for saving lots of info -AdrianGR
 		Make/T/N=(1,1) 'TrainExperiments_allInfo'
 	endif
+	if (WaveExists('TrainAmp_All_PPR')==0)		//Wave for saving 'all' PPRs -AdrianGR
+		Make/N=(1,cols) 'TrainAmp_All_PPR'
+	endif
+	if (WaveExists('TrainAmp_fromInitBaseline_PPR')==0)		//Wave for saving 'fromInitBaseline' PPRs -AdrianGR
+		Make/N=(1,cols) 'TrainAmp_fromInitBaseline_PPR'
+	endif
+	if (WaveExists('TrainAmp_Sync_PPR')==0)		//Wave for saving sync PPRs -AdrianGR
+		Make/N=(1,cols) 'TrainAmp_Sync_PPR'
+	endif
 	
 	
 	
@@ -2238,19 +2264,22 @@ Function Trains_Amp()
 	wave /T w_resFolder=root:Results:TrainExperiments_folder
 	
 	//-AdrianGR
-	Wave w_resTrainAmp_fromInitBL = root:Results:TrainAmp_fromInitBaseline
-	Wave w_resTrainAmp_fromInitBL_Norm = root:Results:TrainAmp_fromInitBaseline_Norm
-	Wave w_resTrainAmp_ASyncAUC = root:Results:TrainAmp_ASyncAUC
-	Wave w_resTrainAmp_ASyncLineX = root:Results:TrainAmp_ASyncLineX
-	Wave w_resTrainAmp_ASyncLineY = root:Results:TrainAmp_ASyncLineY
+	Wave w_resFromInitBL = root:Results:TrainAmp_fromInitBaseline
+	Wave w_resFromInitBL_Norm = root:Results:TrainAmp_fromInitBaseline_Norm
+	Wave w_resASyncAUC = root:Results:TrainAmp_ASyncAUC
+	Wave w_resASyncLineX = root:Results:TrainAmp_ASyncLineX
+	Wave w_resASyncLineY = root:Results:TrainAmp_ASyncLineY
 	Wave w_baselineX = root:Results:TrainAmp_baselineX
 	Wave w_baselineY = root:Results:TrainAmp_baselineY
-	Wave w_resTrainAmp_SyncAUC = root:Results:TrainAmp_SyncAUC
-	Wave w_resTrainAmp_ASyncAUC_cumulative = root:Results:TrainAmp_ASyncAUC_cumulative
-	Wave w_resTrainAmp_SyncAUC_cumulative = root:Results:TrainAmp_SyncAUC_cumulative
+	Wave w_resSyncAUC = root:Results:TrainAmp_SyncAUC
+	Wave w_resASyncAUC_cumulative = root:Results:TrainAmp_ASyncAUC_cumulative
+	Wave w_resSyncAUC_cumulative = root:Results:TrainAmp_SyncAUC_cumulative
 	Wave w_resCTimepoints = root:Results:TrainAmp_CTimepoints
 	Wave w_resRecAF = root:Results:TrainAmp_RecovAmpFrac
 	Wave/T w_resExpAll = root:Results:TrainExperiments_allInfo
+	Wave w_resAllPPR = root:Results:TrainAmp_All_PPR
+	Wave w_resFromInitBL_PPR = root:Results:TrainAmp_fromInitBaseline_PPR
+	Wave w_resSyncPPR = root:Results:TrainAmp_Sync_PPR
 	
 	
 	//Wave w_
@@ -2262,9 +2291,10 @@ Function Trains_Amp()
 	Redimension/N=(n,-1) w_resSync, w_resSync_Norm, w_resAll, w_resDel, w_resCorr
 	Redimension/N=(n) w_resExp, w_resPro, w_resFolder
 	//-AdrianGR
-	Redimension/N=(n,-1) w_resTrainAmp_fromInitBL, w_resTrainAmp_fromInitBL_Norm, w_resTrainAmp_ASyncAUC, w_resTrainAmp_ASyncLineX, w_resTrainAmp_ASyncLineY, w_baselineX, w_baselineY, w_resTrainAmp_SyncAUC
-	Redimension/N=(n,-1) w_resTrainAmp_ASyncAUC_cumulative, w_resTrainAmp_SyncAUC_cumulative
-	Redimension/N=(n,-1) w_resCTimepoints, w_resRecAF
+	Redimension/N=(n,-1) w_resFromInitBL, w_resFromInitBL_Norm, w_resASyncAUC, w_resASyncLineX, w_resASyncLineY, w_baselineX, w_baselineY, w_resSyncAUC
+	Redimension/N=(n,-1) w_resASyncAUC_cumulative, w_resSyncAUC_cumulative
+	Redimension/N=(n,-1) w_resCTimepoints, w_resRecAF, w_resSyncPPR
+	Redimension/N=(n,-1) w_resAllPPR, w_resFromInitBL_PPR, w_resSyncPPR
 	
 	BlankArtifactInTrain(w_temp,x0,x1,gTrainfreq,gTrainStim,AverageT=avgT)
 	n -= 1
@@ -2316,10 +2346,10 @@ Function Trains_Amp()
 		WaveStats/Q/R=(x0-avgT,x0) w_temp								//Getting average from final avgT of previous pulse
 		Variable preStimBaseline = V_avg
 		WaveStats/Q/R=(x1,x0+1/gTrainfreq) w_temp
-		w_resTrainAmp_fromInitBL[n][j] = V_min - preStimBaseline	//Amplitude from baseline as defined above
-		w_resTrainAmp_ASyncLineX[n][j] = x0								//Saving X-coordinates for tonic release
-		w_resTrainAmp_ASyncLineY[n][j] = w_temp(x0)					//Saving Y-coordinates for tonic release
-		//w_resTrainAmp_ASyncLineY[n][j] = mean(w_temp,x0-avgT,x0)	//TODO: not sure if it is reasonable to take an average instead(?) -AdrianGR
+		w_resFromInitBL[n][j] = V_min - preStimBaseline	//Amplitude from baseline as defined above
+		w_resASyncLineX[n][j] = x0								//Saving X-coordinates for tonic release
+		w_resASyncLineY[n][j] = w_temp(x0)					//Saving Y-coordinates for tonic release
+		//w_resASyncLineY[n][j] = mean(w_temp,x0-avgT,x0)	//TODO: not sure if it is reasonable to take an average instead(?) -AdrianGR
 		
 		
 		if (j>0 && x2>0 && 1==0) //DISABLED FITTING SECTION BY REQUIRING 1==0 (just while testing) -AdrianGR
@@ -2395,7 +2425,7 @@ Function Trains_Amp()
 		w_resDel[n][a] = V_minLoc - x0a						//Save delay from start of artefact to peak 							
 		w_resSync[n][a] = Init_amp - baseline				//Save evoked amplitude (relative to last sustained level).
 		
-		w_resTrainAmp_fromInitBL[n][a] = Init_amp - Init_baseline	//Amplitude from baseline as defined above
+		w_resFromInitBL[n][a] = Init_amp - Init_baseline	//Amplitude from baseline as defined above
 		
 		
 		WaveStats/Q/M=1/R=(x0+(a+1)/gTrainfreq-avgT,x0+(a+1)/gTrainfreq) w_temp		//Calculate amplitude at end of pulse -AdrianGR
@@ -2403,12 +2433,12 @@ Function Trains_Amp()
 		w_resRecAF[n][a] = recEnd / w_resSync[n][a]											//Calculate fractional recovery relative to pulse peak -AdrianGR
 		
 		
-		w_resTrainAmp_ASyncLineX[n][a] = x0a									//Save X-coordinates for async release -AdrianGR
-		w_resTrainAmp_ASyncLineY[n][a] = w_temp(x0a)							//Save Y-coordinates for async release -AdrianGR
+		w_resASyncLineX[n][a] = x0a									//Save X-coordinates for async release -AdrianGR
+		w_resASyncLineY[n][a] = w_temp(x0a)							//Save Y-coordinates for async release -AdrianGR
 		if (a == gTrainStim-1)															//if-statement is necessary to also save last point -AdrianGR
-			w_resTrainAmp_ASyncLineX[n][a+1] = x0a+1/gTrainfreq
-			//w_resTrainAmp_ASyncLineY[n][a+1] = w_temp(x0a+1/gTrainfreq)
-			w_resTrainAmp_ASyncLineY[n][a] = mean(w_temp,x0a-avgT,x0a)		//TODO: would it be reasonable to take an average instead? -AdrianGR
+			w_resASyncLineX[n][a+1] = x0a+1/gTrainfreq
+			//w_resASyncLineY[n][a+1] = w_temp(x0a+1/gTrainfreq)
+			w_resASyncLineY[n][a] = mean(w_temp,x0a-avgT,x0a)		//TODO: would it be reasonable to take an average instead? -AdrianGR
 		endif
 		
 		//String tempCalc
@@ -2417,8 +2447,14 @@ Function Trains_Amp()
 		
 	endfor
 	
-	Wave w_resTrainAmp_fromInitBL_Norm = normalize2DWave(w_resTrainAmp_fromInitBL)
+	Wave w_resFromInitBL_Norm = normalize2DWave(w_resFromInitBL)
 	Wave w_resSync_Norm = normalize2DWave(w_resSync)
+	
+	
+	//Calculate PPRs ('paired-pulse-ratios') -AdrianGR
+	w_resAllPPR[n][1,*] = w_resAll[n][q] / w_resAll[n][q-1]
+	w_resFromInitBL_PPR[n][1,*] = w_resFromInitBL[n][q] / w_resFromInitBL[n][q-1]
+	w_resSyncPPR[n][1,*] = w_resSync[n][q] / w_resSync[n][q-1]
 	
 	
 	// Fitting of each pulse (decay portion) and saving fit variables in multidimensional wave -AdrianGR
@@ -2480,13 +2516,13 @@ Function Trains_Amp()
 	//Doesn't work properly. This section should calculate AUCs/'charge', but old method (Trains_Charge()) is better atm. -AdrianGR
 	Duplicate/O w_temp, w_temp2														//Duplicate wave so we can subtract Init_baseline
 	w_temp2 = w_temp2 - Init_baseline												//Subtract Init_baseline
-	//Duplicate/O/RMD=[n][,*] w_resTrainAmp_ASyncLineX, w_tempASyncX
-	//Duplicate/O/RMD=[n][,*] w_resTrainAmp_ASyncLineY, w_tempASyncY
+	//Duplicate/O/RMD=[n][,*] w_resASyncLineX, w_tempASyncX
+	//Duplicate/O/RMD=[n][,*] w_resASyncLineY, w_tempASyncY
 	x0 = x0_cache; x1 = x1_cache														//Reset x0 and x1 (only necessary if they are changed before this section starts) -AdrianGR
 	for (a=0; a<gTrainStim; a+=1)
 		//break
-		Duplicate/O/RMD=[n][a,a+1] w_resTrainAmp_ASyncLineX, w_tempASyncX
-		Duplicate/O/RMD=[n][a,a+1] w_resTrainAmp_ASyncLineY, w_tempASyncY
+		Duplicate/O/RMD=[n][a,a+1] w_resASyncLineX, w_tempASyncX
+		Duplicate/O/RMD=[n][a,a+1] w_resASyncLineY, w_tempASyncY
 		//w_tempASyncY = w_tempASyncY - Init_baseline
 		Make/O/D/N=(2) w_tempX
 		w_tempX[0] = x1+a/gTrainfreq
@@ -2498,33 +2534,33 @@ Function Trains_Amp()
 		w_tempY = w_tempY - Init_baseline
 		Variable ASyncArea = areaXY(w_tempX, w_tempY, w_tempX[0], w_tempX[1])
 		
-		w_resTrainAmp_ASyncAUC[n][a] = abs(ASyncArea)
-		w_resTrainAmp_SyncAUC[n][a] = abs(syncPlusASyncArea - ASyncArea)
+		w_resASyncAUC[n][a] = abs(ASyncArea)
+		w_resSyncAUC[n][a] = abs(syncPlusASyncArea - ASyncArea)
 	endfor
 	KillWaves w_tempASyncX, w_tempASyncY, w_tempX, w_tempY
 	
 	
-	w_resTrainAmp_ASyncAUC_cumulative[n][0] = w_resTrainAmp_ASyncAUC[n][0]
-	//w_resTrainAmp_ASyncAUC_cumulative[n][1,*] = w_resTrainAmp_ASyncAUC[n][q] + w_resTrainAmp_ASyncAUC_cumulative[n][q-1]	//this line does the same as the for-loop below -AdrianGR
+	w_resASyncAUC_cumulative[n][0] = w_resASyncAUC[n][0]
+	//w_resASyncAUC_cumulative[n][1,*] = w_resASyncAUC[n][q] + w_resASyncAUC_cumulative[n][q-1]	//this line does the same as the for-loop below -AdrianGR
 	Variable h
-	for(h=1; h<DimSize(w_resTrainAmp_ASyncAUC,1); h+=1)
-		w_resTrainAmp_ASyncAUC_cumulative[n][h] = w_resTrainAmp_ASyncAUC[n][h] + w_resTrainAmp_ASyncAUC_cumulative[n][h-1]
+	for(h=1; h<DimSize(w_resASyncAUC,1); h+=1)
+		w_resASyncAUC_cumulative[n][h] = w_resASyncAUC[n][h] + w_resASyncAUC_cumulative[n][h-1]
 	endfor
-	w_resTrainAmp_SyncAUC_cumulative[n][0] = w_resTrainAmp_SyncAUC[n][0]
-	//w_resTrainAmp_SyncAUC_cumulative[n][1,*] = w_resTrainAmp_SyncAUC[n][q] + w_resTrainAmp_SyncAUC_cumulative[n][q-1]		//this line does the same as the for-loop below -AdrianGR
-	for(h=1; h<DimSize(w_resTrainAmp_SyncAUC,1); h+=1)
-		w_resTrainAmp_SyncAUC_cumulative[n][h] = w_resTrainAmp_SyncAUC[n][h] + w_resTrainAmp_SyncAUC_cumulative[n][h-1]
+	w_resSyncAUC_cumulative[n][0] = w_resSyncAUC[n][0]
+	//w_resSyncAUC_cumulative[n][1,*] = w_resSyncAUC[n][q] + w_resSyncAUC_cumulative[n][q-1]		//this line does the same as the for-loop below -AdrianGR
+	for(h=1; h<DimSize(w_resSyncAUC,1); h+=1)
+		w_resSyncAUC_cumulative[n][h] = w_resSyncAUC[n][h] + w_resSyncAUC_cumulative[n][h-1]
 	endfor
 	
-	//print "Total asynchronous release AUC:\t", w_resTrainAmp_ASyncAUC_cumulative[n][INF]
-	//print "Total synchronous release AUC:\t", w_resTrainAmp_SyncAUC_cumulative[n][INF]
+	//print "Total asynchronous release AUC:\t", w_resASyncAUC_cumulative[n][INF]
+	//print "Total synchronous release AUC:\t", w_resSyncAUC_cumulative[n][INF]
 	
 	
-	w_baselineX[n][,*] = w_resTrainAmp_ASyncLineX[n][q]
+	w_baselineX[n][,*] = w_resASyncLineX[n][q]
 	w_baselineY[n][,*] = Init_baseline
 	AppendToGraph/W=Experiments/C=(0,55555,55555) w_baselineY[n][,*] vs w_baselineX[n][,*] //In effect shows Init_baseline on graph -AdrianGR
 	
-	AppendToGraph/W=Experiments/C=(0,0,55555) w_resTrainAmp_ASyncLineY[n][,*] vs w_resTrainAmp_ASyncLineX[n][,*] //-AdrianGR
+	AppendToGraph/W=Experiments/C=(0,0,55555) w_resASyncLineY[n][,*] vs w_resASyncLineX[n][,*] //-AdrianGR
 	
 	
 	print "n =	", n
@@ -2534,7 +2570,7 @@ Function Trains_Amp()
 	//w_resPro[n]=get_protocolname2(gTheWave)			//Save name of the protocol of the analyzed series
 	//w_resFolder[n]=folder[gWaveindex]
 	
-	//New block for saving stuff (old block above) -AdrianGR
+	//New block for saving info stuff (old block above) -AdrianGR
 	Wave/T w_extractedInfo = extractWaveListInfo()
 	w_resExp[n] = w_extractedInfo[%exper][gWaveindex]
 	w_resPro[n] = w_extractedInfo[%protocol][gWaveindex]
@@ -2558,7 +2594,7 @@ Function Trains_Amp()
 		Trains_Charge()
 //		endif
 	
-	
+	//Calculating and saving RTSR data ('recovery of total syncronous release') -AdrianGR
 	if(WaveExists(root:WorkData:RTSR_data))
 		Wave CSyncCum = root:Results:TrainAmp_CSyncCum
 		SetDataFolder root:WorkData
@@ -2597,11 +2633,11 @@ Function Trains_Amp()
 			RTSRinfo[RTSRnum][] = w_resExpAll[n][q]
 			Duplicate/O RTSRinfo, root:Results:TrainAmp_RTSRinfo
 		endif
-		
-		
 	else
-		print "RTSR calculations not performed because necessary waves were not created first."
+		print "RTSR calculations not performed, likely because necessary waves were not created first."
 	endif
+	
+	
 	
 	
 	ResumeUpdate
@@ -3406,7 +3442,7 @@ Function BlankArtifactInTrain(w,x0,x1,freq,num_stim,[AverageT]) //Added AverageT
 		//WaveStats/Q/M=1/R=(x0+i/freq-AverageT,x0+i/freq) w
 		//TempAverage = V_avg
 		TempAverage = mean(w, x0+i/freq-AverageT, x0+i/freq)
-		w[x2pnt(w, x0+i/freq)+1, x2pnt(w, x1+i/freq)+2] = TempAverage //Shifted first index by 1 to avoid modifying the actual point of x0. Shifted index for x1 to correct for imperfectly timed artefacts -AdrianGR
+		w[x2pnt(w, x0+i/freq), x2pnt(w, x1+i/freq)] = TempAverage
 	endfor
 	
 //	i=0
@@ -4562,14 +4598,14 @@ Function/WAVE extractWaveStrInfo(inString, [regExPattern])
 	String inString
 	String regExPattern
 	if(ParamIsDefault(regExPattern))
-		regExPattern = "^(x[0-9]{1}.+)_([0-9]{1})_([0-9]{1})_([0-9]{3})_([0-9]{1})_(.+)$"	//If RegEx pattern has not been supplied, default to this (made based on test string "x0X20Hz_50_9s_1_1_001_1_I-mon")
+		regExPattern = "^(x[0-9]{1,2}.+)_([0-9]{1,2})_([0-9]{1,2})_([0-9]{3})_([0-9]{1,2})_(.+)$"	//If RegEx pattern has not been supplied, default to this (made based on test string "x0X20Hz_50_9s_1_1_001_1_I-mon")
 	endif
 	String proStr, grStr, serStr, swStr, trStr, trNameStr
 	Variable sweepOutInt
 	
 	SplitString/E=(regExPattern) inString, proStr, grStr, serStr, swStr, trStr, trNameStr
 	if(V_flag != 6)
-		print "not all matched"
+		print "Error in extractWaveStrInfo(), only matched: ", V_flag
 	endif
 	
 	Make/O/T tempWaveExtract = {proStr, grStr, serStr, swStr, trStr, trNameStr}
@@ -4653,7 +4689,7 @@ Function/WAVE extractWaveListInfo()
 	Wave/T proW = root:protocolwave
 	Wave/T folderW = root:Data:folder
 	Variable numWaves = ItemsInList(gWaveList, ";")
-	Make/O/T/N=(12, numWaves) w_ExtractedInfo
+	Make/O/T/N=(13, numWaves) w_ExtractedInfo
 	Wave/T w_ExtractedInfo
 	
 	SetDimLabel 0, 0, protocol, w_ExtractedInfo
@@ -4668,6 +4704,7 @@ Function/WAVE extractWaveListInfo()
 	SetDimLabel 0, 9, fileName, w_ExtractedInfo
 	SetDimLabel 0, 10, folderLast, w_ExtractedInfo
 	SetDimLabel 0, 11, DayMonth, w_ExtractedInfo
+	SetDimLabel 0, 12, capacitance, w_ExtractedInfo
 	
 	Variable i
 	for(i=0; i<numWaves; i+=1)
@@ -4678,6 +4715,7 @@ Function/WAVE extractWaveListInfo()
 		w_ExtractedInfo[%protocol][i] = get_protocolname2(curWaveName)
 		w_ExtractedInfo[%fileName][i] = getPMDatFileName(curWaveName)
 		w_ExtractedInfo[%DayMonth][i] = getPMSweepTimeDate(curWaveName)
+		w_ExtractedInfo[%capacitance][i] = num2str(getPMcapacitance(curWaveName))
 	endfor
 	
 	Make/O/N=(4, numWaves) w_ExtractedInfoNumeric
@@ -4715,7 +4753,7 @@ Function/WAVE extractWaveListInfo()
 		endif
 		w_ExtractedInfo[%exper][i] = expW[tempIndex]
 		w_ExtractedInfo[%folder][i] = folderW[tempIndex]
-		w_ExtractedInfo[%folderLast][i] = get_singleRegExMatch(w_ExtractedInfo[%folder][i], "\W\W(?:[0-9]{1,4}.[0-9]{1,2}.[0-9]{1,2})\W\W(\w{1,10})\W\W")
+		w_ExtractedInfo[%folderLast][i] = get_singleRegExMatch(w_ExtractedInfo[%folder][i], "\\W\\W(?:[0-9]{1,4}.[0-9]{1,2}.[0-9]{1,2})\\W\\W(\\w{1,10})\\W\\W")
 		tempIndex_cache = tempIndex
 	endfor
 	
@@ -4857,6 +4895,8 @@ Function proc_button_initRTSRpanel(ctrlName) : ButtonControl
 End
 
 Function init_RTSR_panel()
+	DFREF saveDFR = GetDataFolderDFR()
+	
 	SetDataFolder root:Globals
 	Variable/G gsv_RTSRnumDelays = 4
 	String/G gsv_RTSRdelayVals = "9;5;3;1"
@@ -4865,6 +4905,9 @@ Function init_RTSR_panel()
 	Variable/G gcb_RTSR_P = 0
 	//SVAR/Z gRTSRdelayValList = root:Globals:gRTSRdelayValList
 	String/G gpop_RTSRdelay = "\"" + gsv_RTSRdelayVals + "\""
+	Variable/G gWaveListNum// = 10//ItemsInList(root:Globals:gWaveList,";")
+	NVAR gWaveIndex = root:Globals:gWaveIndex
+	SetFormula gWaveListNum, "ItemsInList(root:Globals:gWaveList,\";\")-1"
 	
 	PauseUpdate; Silent 1		// building window...
 	NewPanel/W=(20,750,220,955)/N=RTSR_panel/K=1
@@ -4873,6 +4916,7 @@ Function init_RTSR_panel()
 	SetVariable sv_RTSRdelayVals, pos={10,35}, size={180,20}, title="Delay values", value=gsv_RTSRdelayVals, help={"List of delay values, separated by semicolon."}
 	Button btn_makeRTSR, pos={10,60}, size={180,20}, proc=proc_btn_makeRTSR, title="Make RTSR waves", help={"Click to create waves necessary for RTSR calculations."}
 	DrawLine 10,90,190,90
+	ValDisplay vd_waveListProgBar, pos={10,87}, size={180,6}, barmisc={0,0}, limits={0,gWaveListNum,0}, value=#"root:Globals:gWaveIndex", highColor=(0,40000,0)
 	CheckBox cb_RTSRinclude, pos={10,100}, size={100,20}, title="Include in RTSR", variable=gcb_RTSRinclude, proc=proc_cb_RTSRinclude, help={"Check to include the train about to be analyzed in RTSR analysis."}
 	SetVariable sv_RTSRnumber, pos={10,125}, size={100,20}, title="Number", value=gsv_RTSRnumber, limits={0,INF,1}, proc=proc_sv_RTSRnumber, help={"Set 'number', can e.g. correspond to each new cell analyzed."}
 	PopupMenu pop_RTSRdelay, pos={10,150}, size={100,20}, title="Delay (s)", value=#gpop_RTSRdelay, proc=proc_pop_RTSRdelay, help={"Choose delay time. List is updated by shift+click."}
@@ -4882,6 +4926,8 @@ Function init_RTSR_panel()
 	SetVariable sv_A, align=1, pos={190,135}, size={60,20}, fsize=10, title="A", limits={0,INF,1}, value=gsv_A
 	SetVariable sv_B, align=1, pos={190,155}, size={60,20}, fsize=10, title="B", limits={0,INF,1}, value=gsv_B
 	Button btn_Magic, align=1, pos={190,175}, size={60,20}, fsize=10, title="Magic", proc=proc_btn_Magic
+	
+	SetDataFolder saveDFR
 End
 
 Function proc_btn_makeRTSR(ctrlName) : ButtonControl
@@ -4890,8 +4936,8 @@ Function proc_btn_makeRTSR(ctrlName) : ButtonControl
 	if(V_flag == 2)
 		Abort
 	endif
-	NVAR gsv_RTSRnumDelays
-	SVAR gsv_RTSRdelayVals
+	NVAR gsv_RTSRnumDelays = root:Globals:gsv_RTSRnumDelays
+	SVAR gsv_RTSRdelayVals = root:Globals:gsv_RTSRdelayVals
 	//print gsv_numDelays,gsv_delayVals
 	makeRTSRwave(gsv_RTSRnumDelays,gsv_RTSRdelayVals)
 	
@@ -4947,6 +4993,7 @@ Function proc_pop_RTSRdelay(PU_Struct) : PopupMenuControl
 	
 	if(((PU_Struct.eventMod & 2^1) != 0)) //Shift+click updates popupmenu
 		update_pop_RTSRdelay()
+		print "Updated delay popup menu"
 	endif
 	
 	if(PU_Struct.eventCode == 2)
@@ -4991,17 +5038,30 @@ Function updateRTSRparamsFromGUI()
 	RTSRp[%P1P2] = V_Value + 1
 End
 
-Function proc_btn_Magic(ctrlName) : ButtonControl
-	String ctrlName
+Function proc_btn_Magic(B_Struct) : ButtonControl
+	STRUCT WMButtonAction &B_Struct
 	SVAR gTheWave = root:Globals:gTheWave
 	NVAR gsv_A = root:Globals:gsv_A, gsv_B = root:Globals:gsv_B
 	
 	Variable del = get_InterTrainDelay(gTheWave)
 	
-	moveCursorsToPnt(Ap=gsv_A,Bp=gsv_B)
+	if(B_Struct.eventCode == 2)
+		switch(B_Struct.eventMod)
+			case 2:
+				BaselineStartToA()
+				BaselineStartToA()
+				BaselineStartToA()
+				BaselineStartToA()
+				BaselineStartToA()
+				Trains_Amp()
+				break
+			default:
+				moveCursorsToPnt(Ap=gsv_A,Bp=gsv_B)
+				SetAxis/W=Experiments left, -4e-9,5e-10
+				SetAxis/W=Experiments bottom, 0.495,0.53
+		endswitch
+	endif
 	
-	SetAxis/W=Experiments left, -4e-9,5e-10
-	SetAxis/W=Experiments bottom, 0.495,0.53
 End
 
 Function moveCursorsToPnt([Ap, Bp, Cp, Dp])
@@ -5074,7 +5134,8 @@ Function/WAVE testSaveData([saveBool])
 End
 
 Function testInitSavePath()
-	NewPath/O savePathDA1 "C:Users:kzw421:Desktop:Adrian G R:ephys recordings:Data analysis 1:"
+	String pathStr = "C:Users:kzw421:Desktop:Adrian G R:ephys recordings:Data analysis 2:"
+	NewPath/O/C savePathDA1 pathStr
 End
 
 Function/WAVE testLoadData()
@@ -5132,7 +5193,7 @@ End
 
 Function/WAVE testMakeSaveWavesWave(DFREF wavesAreHere, DFREF saveRefHere, String saveName)
 	SetDataFolder saveRefHere
-	Make/WAVE/O/N=(19) $saveName
+	Make/WAVE/O/N=(28) $saveName
 	Wave/WAVE sWW = $saveName
 	
 	SetDataFolder wavesAreHere
@@ -5155,6 +5216,15 @@ Function/WAVE testMakeSaveWavesWave(DFREF wavesAreHere, DFREF saveRefHere, Strin
 	sWW[16] = $"TrainAmp_RTSRx"
 	sWW[17] = $"TrainAmp_RTSRy"
 	sWW[18] = $"TrainAmp_RTSRinfo"
+	sWW[19] = $"TrainAmp_All_PPR"
+	sWW[20] = $"TrainAmp_fromInitBaseline_PPR"
+	sWW[21] = $"TrainAmp_Sync_PPR"
+	sWW[22] = $"TrainAmp_Csync_PPR"
+	sWW[23] = $"TrainAmp_CAsync_PPR"
+	sWW[24] = $"TrainAmp_CAll_PPR"
+	sWW[25] = $"TrainAmp_CCum_PPR"
+	sWW[26] = $"TrainAmp_CSyncCum_PPR"
+	sWW[27] = $"TrainAmp_CASyncCum_PPR"
 	
 	SetDataFolder saveRefHere
 	
@@ -5169,4 +5239,34 @@ Function abortOnZeroInWaveRefWave(inWave)
 			Abort "One or more wave references missing"
 		endif
 	endfor
+End
+
+Function cleanupZeros(inWave, inDim)
+	Wave inWave
+	Variable inDim
+	Duplicate/O inWave, outWave
+	
+	//outWave = outWave==0 ? NaN : outWave
+	Variable i
+	switch(inDim)
+		case 0:
+			for(i=0; i<DimSize(outWave,inDim); i+=1)
+				MatrixOp/O sumWave = sumRows(outWave)
+				if(sumWave[i] == 0)
+					DeletePoints/M=(inDim) i, 1, outWave
+					print i
+				endif
+			endfor
+			break
+		case 1:
+			for(i=0; i<DimSize(outWave,inDim); i+=1)
+				MatrixOp/O sumWave = sumCols(outWave)
+				if(sumWave[0][i] == 0)
+					DeletePoints/M=(inDim) i, 1, outWave
+					print i
+				endif
+			endfor
+			break
+	endswitch
+	
 End
