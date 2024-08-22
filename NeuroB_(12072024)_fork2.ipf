@@ -94,8 +94,9 @@ End
 
 Menu "NeuroBunny"
 	Submenu "Special: Save or concat data"
-		"Concat data", testConcatData()
 		"Save", testSaveData(saveBool=1)
+		"Concat data", testConcatData()
+		"Concat data v2", testConcatData2()
 	End
 End
 
@@ -4923,6 +4924,8 @@ Function init_RTSR_panel()
 	CheckBox cb_RTSR_P, pos={10,175}, size={100,20}, proc=proc_cb_RTSR_P, title="P1", variable=gcb_RTSR_P, help={"P1 when unchecked, P2 when checked. P1/P2 are two separate trains, separated by delay set above."}
 	
 	Variable/G gsv_A = 10000, gsv_B = 10066
+	Button btn_moveStimCursorsB, align=1, pos={160,110}, size={20,15}, fsize=10, title="<", proc=proc_btn_moveStimCursors
+	Button btn_moveStimCursorsF, align=1, pos={190,110}, size={20,15}, fsize=10, title=">", proc=proc_btn_moveStimCursors
 	SetVariable sv_A, align=1, pos={190,135}, size={60,20}, fsize=10, title="A", limits={0,INF,1}, value=gsv_A
 	SetVariable sv_B, align=1, pos={190,155}, size={60,20}, fsize=10, title="B", limits={0,INF,1}, value=gsv_B
 	Button btn_Magic, align=1, pos={190,175}, size={60,20}, fsize=10, title="Magic", proc=proc_btn_Magic
@@ -4947,7 +4950,7 @@ End
 Function proc_cb_RTSR_P(CB_Struct) : CheckBoxControl
 	STRUCT WMCheckboxAction &CB_Struct
 	if(WaveExists(root:WorkData:RTSR_params)==0)
-		abort
+		Abort
 	endif
 	Wave RTSRp = root:WorkData:RTSR_params
 	
@@ -5048,11 +5051,18 @@ Function proc_btn_Magic(B_Struct) : ButtonControl
 	if(B_Struct.eventCode == 2)
 		switch(B_Struct.eventMod)
 			case 2:
+				moveCursorsToPnt(Ap=gsv_A,Bp=gsv_B)
 				BaselineStartToA()
 				BaselineStartToA()
 				BaselineStartToA()
 				BaselineStartToA()
 				BaselineStartToA()
+				if(WaveExists(root:WorkData:RTSR_params)==0)
+					DoAlert 1, "RTSR waves haven't been created. Continue anyway?"
+					if(V_flag == 2)
+						Abort
+					endif
+				endif
 				Trains_Amp()
 				break
 			default:
@@ -5061,7 +5071,37 @@ Function proc_btn_Magic(B_Struct) : ButtonControl
 				SetAxis/W=Experiments bottom, 0.495,0.53
 		endswitch
 	endif
+End
+
+Function proc_btn_moveStimCursors(B_Struct) : ButtonControl
+	STRUCT WMButtonAction &B_Struct
+	NVAR gsv_A = root:Globals:gsv_A, gsv_B = root:Globals:gsv_B
+	Variable tempAp, tempBp
 	
+	if(B_Struct.eventCode == 2)
+		strswitch(B_Struct.ctrlName)
+			case "btn_moveStimCursorsF":
+				if(B_Struct.eventMod == 2)
+					gsv_B += 1
+					tempAp = pcsr(A, "Experiments")
+					tempBp = pcsr(B, "Experiments")+1
+					moveCursorsToPnt(Ap=tempAp,Bp=tempBp)
+				else
+					cursorJumpAB(1)
+				endif
+				break
+			case "btn_moveStimCursorsB":
+				if(B_Struct.eventMod == 2)
+					gsv_B -= 1
+					tempAp = pcsr(A, "Experiments")
+					tempBp = pcsr(B, "Experiments")-1
+					moveCursorsToPnt(Ap=tempAp,Bp=tempBp)
+				else
+					cursorJumpAB(-1)
+				endif
+				break
+		endswitch
+	endif
 End
 
 Function moveCursorsToPnt([Ap, Bp, Cp, Dp])
@@ -5098,6 +5138,54 @@ Function moveCursorsToPnt([Ap, Bp, Cp, Dp])
 	Cursor/C=(65535,33232,0)/W=Experiments/H=1/S=1/L=1 C,$gTheWave,x2
 	Cursor/C=(65535,33232,0)/W=Experiments/H=1/S=1/L=1 D,$gTheWave,x3
 	
+	SetDataFolder saveDFR
+End
+
+Function cursorJumpAB(n, [moveAxes])
+	Variable n, moveAxes
+	if(ParamIsDefault(moveAxes))
+		moveAxes = 1
+	endif
+	SVAR gTheWave=root:Globals:gTheWave
+	NVAR gTrainStim=root:Globals:gTrainStim, gTrainfreq=root:Globals:gTrainfreq
+	DFREF saveDFR = GetDataFolderDFR()
+	
+	Variable x0p, x1p, x0, x1
+	SetDataFolder root:OrigData
+	x0p = pcsr(A, "Experiments")
+	x1p = pcsr(B, "Experiments")
+	x0=pnt2x($gTheWave,x0p)
+	x1=pnt2x($gTheWave,x1p)
+	
+	x0 = x0 + n/gTrainfreq
+	x1 = x1 + n/gTrainfreq
+	
+	if(x2pnt($gTheWave,x0) >= numpnts($gTheWave) || x2pnt($gTheWave,x1) >= numpnts($gTheWave) || x2pnt($gTheWave,x0) < 0 || x2pnt($gTheWave,x1) < 0)
+		print "Can't move cursors that far"
+		SetDataFolder saveDFR
+		Abort
+	endif
+	
+	if(x2pnt($gTheWave,x1) > x2pnt($gTheWave,x0))
+		//print "Cursor B is higher than cursor A"
+	endif
+	
+	moveCursorsToPnt(Ap=x2pnt($gTheWave,x0),Bp=x2pnt($gTheWave,x1))
+	
+	if(moveAxes == 1)
+		Variable xAxisStart = x0-0.005
+		Variable xAxisEnd = x0+0.035
+		//SetAxis/W=Experiments left, -4e-9,5e-10
+		SetAxis/W=Experiments bottom, xAxisStart, xAxisEnd
+	endif
+	SetDataFolder saveDFR
+End
+
+Function testingTest(Variable g)
+	SVAR gTheWave=root:Globals:gTheWave
+	DFREF saveDFR = GetDataFolderDFR()
+	SetDataFolder root:OrigData
+	print x2pnt($gTheWave,g)
 	SetDataFolder saveDFR
 End
 
@@ -5191,6 +5279,175 @@ Function testConcatData([saveRes])
 	
 End
 
+Function/WAVE testLoadData2()
+	testInitSavePath()
+	SetDataFolder root:
+	if(DataFolderExists("ResultsConcat")==0)
+		NewDataFolder root:ResultsConcat
+	endif
+	
+	DFREF wavesHere = root:ResultsConcat
+	DFREF saveRefHere = wavesHere
+	SetDataFolder wavesHere
+	
+	LoadWave/T/O/I/P=savePathDA1 "AllAnalyses.itx"
+	
+	Wave/WAVE sWW_loaded = testMakeSaveWavesWave(wavesHere, saveRefHere, "saveWavesWave_loaded")
+	SetDataFolder wavesHere
+	return sWW_loaded
+End
+
+Function testConcatData2([saveRes])
+	Variable saveRes
+	if(ParamIsDefault(saveRes))
+		saveRes = 1
+	endif
+	DoAlert 1, "Continue with data concatenation?"
+	if(V_flag == 2)
+		Abort
+	endif
+	SetDataFolder root:
+	if(DataFolderExists("imported")==0)
+		NewDataFolder :imported
+	endif
+	SetDataFolder :imported
+	
+	String baseDir = "C:Users:kzw421:Desktop:Adrian G R:ephys recordings:"
+	String subDirList = "2024-07-25:P1_het:;2024-07-29:P1_het:;2024-08-05:P4_het:;2024-07-29:P2_KO:;2024-07-30:P2_KO:;2024-07-30:P3_KO:;2024-07-31:P2_KO:;2024-07-31:P3_KO:;2024-08-01:P2_KO:;2024-08-01:P3_KO:;2024-08-06:P2_KO:;2024-08-07:P2_KO:;2024-08-06:P2_KO213:;2024-08-07:P2_KO213:;"
+	String fileNameCommon = "ThisAnalysis02.itx"
+	Variable numFiles = ItemsInList(subDirList,";")
+	Make/WAVE/O/N=0 loadedWaves
+	//Wave/WAVE loadedWaves
+	
+	Variable k,l
+	for(k=0; k<numFiles; k+=1)
+		String currentFilePath = baseDir+StringFromList(k,subDirList,";")+fileNameCommon
+		String newDFname = "in"+num2str(k)
+		NewDataFolder :$newDFname
+		SetDataFolder :$newDFname
+		LoadWave/T/O currentFilePath
+		
+		Redimension/N=(ItemsInList(S_waveNames),k+1) loadedWaves
+		SetDimLabel 1, k, $newDFname, loadedWaves
+		for(l=0; l<ItemsInList(S_waveNames); l+=1)
+			loadedWaves[l][k] = $StringFromList(l,S_waveNames,";")
+		endfor
+		SetDataFolder root:imported
+	endfor
+	
+	NewDataFolder :concat
+	SetDataFolder :concat
+	DFREF concatDF = GetDataFolderDFR()
+	
+	for(k=0; k<DimSize(loadedWaves,0); k+=1)
+		Duplicate/O/RMD=[k][] loadedWaves, loadedWavesRow
+		Wave tempWave = loadedWaves[k][0]
+		String tempName = NameOfWave(tempWave)
+		Concatenate/DL/NP=0/O {loadedWavesRow}, $tempName
+	endfor
+	KillWaves loadedWavesRow
+	
+	DFREF currentDF = GetDataFolderDFR()
+	Variable numWavesInDF = CountObjectsDFR(currentDF,1)
+	Make/WAVE/N=(numWavesInDF) concatWaves
+	
+	for(k=0; k<numWavesInDF; k+=1)
+		Wave currentWave = WaveRefIndexedDFR(currentDF,k)
+		concatWaves[k] = currentWave
+		SetDimLabel 0, k, $NameOfWave(currentWave), concatWaves
+		if(WaveType(currentWave,1)==1)
+			cleanupZeroDims2(currentWave,0,doInPlace=1)
+		elseif(WaveType(currentWave,1)==2)
+			cleanupEmptyDimsT2(currentWave,0,doInPlace=1)
+		endif
+	endfor
+	
+	DoAlert 1, "Do you want to do the additional analysis to group into genotype and trains etc.?"
+	if(V_flag == 1)
+		groupConditionRowsToWaves2(9)
+		groupConditionRowsToWaves2(5)
+		groupConditionRowsToWaves2(3)
+		groupConditionRowsToWaves2(1)
+	endif
+	
+	DoAlert 1, "Do you want to do open the relevant waves?"
+	if(V_flag == 1)
+		testOpenStuff()
+	endif
+	
+	if(1==0)//
+	//Wave/WAVE sWW = testSaveData()
+	Wave/WAVE sWW_loaded = testLoadData2()
+	SetDataFolder root:ResultsConcat
+	if(DataFolderExists("out")==0)
+		NewDataFolder :out
+	endif
+	
+	Duplicate/O/WAVE sWW_loaded, :out:sWW_out/WAVE=sWW_out
+	
+	Variable i
+	for(i=0; i<DimSize(sWW_loaded,0); i+=1)
+		String tempWaveName = NameOfWave(sWW_loaded[i])
+		Duplicate/O sWW_loaded[i], :out:$tempWaveName
+		//Concatenate/O/DL/NP=0 {sWW_loaded[i], sWW[i]}, :out:$tempWaveName/WAVE=sWWi
+		sWW_out[i] = sWWi
+	endfor
+	
+	if(saveRes == 1)
+		String saveWavesList = WaveRefWaveToList(sWW_out,0)
+		Save/T/M="\r\n"/I/B/P=savePathDA1 saveWavesList as "AllAnalyses.itx"
+		Save/J/M="\r\n"/I/B/P=savePathDA1/W/U={1,0,1,0} saveWavesList as "AllAnalyses.txt"
+	endif
+	endif//
+End
+
+Function testOpenStuff([kill])
+	Variable kill
+	if(ParamIsDefault(kill))
+		kill = 0
+	endif
+	Variable left = 10, top = 10, width = 400, height = 200
+	if(kill <= 0)
+		String subDirList = "grouped_1s;grouped_3s;grouped_5s;grouped_9s;"
+		String resTypePref = "TrainAmp_"
+		String t = resTypePref
+		String resTypeList = "Sync_Norm;CASyncCum;CSyncCum;Sync_PPR;RTSRy;"
+		String genoPrefList = "KO213;KO;Het;"
+		Variable i,j,k,tableIndex=1
+		for(i=0; i<ItemsInList(subDirList); i+=1)
+			String subDirStr = StringFromList(i,subDirList,";")
+			DFREF subDir = $subDirStr
+			for(j=0; j<ItemsInList(resTypeList); j+=1)
+				String b = StringFromList(j,resTypeList,";")
+				for(k=0; k<ItemsInList(genoPrefList); k+=1)
+					String c = StringFromList(k,genoPrefList,";")
+					String tableName = "Tbl"+num2str(tableIndex)
+					String wName = c+"_"+t+b
+					String tableTitle = num2str(tableIndex)+"_"+subDirStr+"_"+c+"_"+b
+					
+					switch(k)
+						case 0:
+							Edit/K=1/N=$tableName/W=(left,top,left+width,top+height) subDir:$wName as tableTitle
+							break
+						case 1:
+							Edit/K=1/N=$tableName/W=(2*left+width,top,2*left+2*width,top+height) subDir:$wName as tableTitle
+							break
+						case 2:
+							Edit/K=1/N=$tableName/W=(left,7*top+height,left+width,7*top+2*height) subDir:$wName as tableTitle
+							break
+					endswitch
+					tableIndex += 1
+				endfor
+			endfor
+		endfor
+	elseif(kill >= 1)
+		Variable w
+		for(w=kill; w<100; w+=1)
+			KillWindow/Z $("Tbl"+num2str(w))
+		endfor
+	endif
+End
+
 Function/WAVE testMakeSaveWavesWave(DFREF wavesAreHere, DFREF saveRefHere, String saveName)
 	SetDataFolder saveRefHere
 	Make/WAVE/O/N=(28) $saveName
@@ -5241,32 +5498,412 @@ Function abortOnZeroInWaveRefWave(inWave)
 	endfor
 End
 
-Function cleanupZeros(inWave, inDim)
+Function/WAVE cleanupZeroDims2(inWave, inDim, [doInPlace])
 	Wave inWave
 	Variable inDim
-	Duplicate/O inWave, outWave
+	Variable doInPlace
+	if(ParamIsDefault(doInPlace))
+		doInPlace = 0
+	endif
+	
+	String outWaveName = NameOfWave(inWave)
+	
+	switch(doInPlace)
+		case 0:
+			if(DataFolderExists("clean")==0)
+				NewDataFolder :clean
+			endif
+			Duplicate/O inWave, :clean:$outWaveName
+			Wave outWave = :clean:$outWaveName
+			break
+		case 1:
+			Wave outWave = inWave
+			break
+	endswitch
+	
+	//Make/FREE/N=0 indexWave
+	
+	Variable i
+	switch(inDim)
+		case 0:
+			for(i=DimSize(outWave,inDim)-1; i>=0; i-=1)
+				MatrixOp/O/FREE sumWave = sumRows(outWave)
+				if(sumWave[i] == 0)
+					//InsertPoints/M=(inDim) INF, 1, indexWave
+					//indexWave[INF] = i
+					DeletePoints/M=(inDim) i, 1, outWave
+					//print i
+				endif
+			endfor
+			break
+		case 1:
+			for(i=DimSize(outWave,inDim)-1; i>=0; i-=1)
+				MatrixOp/O/FREE sumWave = sumCols(outWave)
+				if(sumWave[i] == 0)
+					//InsertPoints/M=(inDim) INF, 1, indexWave
+					//indexWave[INF] = i
+					DeletePoints/M=(inDim) i, 1, outWave
+					//print i
+				endif
+			endfor
+			break
+	endswitch
+	return outWave
+End
+
+Function/WAVE cleanupEmptyDimsT2(inWave, inDim, [doInPlace])
+	Wave/T inWave
+	Variable inDim
+	Variable doInPlace
+	if(ParamIsDefault(doInPlace))
+		doInPlace = 0
+	endif
+	
+	String outWaveName = NameOfWave(inWave)
+	
+	switch(doInPlace)
+		case 0:
+			if(DataFolderExists("clean")==0)
+				NewDataFolder :clean
+			endif
+			Duplicate/O inWave, :clean:$outWaveName
+			Wave/T outWave = :clean:$outWaveName
+			break
+		case 1:
+			Wave/T outWave = inWave
+			break
+	endswitch
+	
+	//Make/FREE/N=0 indexWave
+	
+	Variable i
+	switch(inDim)
+		case 0:
+			for(i=DimSize(outWave,inDim)-1; i>=0; i-=1)
+				if(cmpstr(outWave[i], "") == 0)
+					//InsertPoints/M=(inDim) INF, 1, indexWave
+					//indexWave[INF] = i
+					DeletePoints/M=(inDim) i, 1, outWave
+					//print i
+				endif
+			endfor
+			break
+		case 1:
+			for(i=DimSize(outWave,inDim)-1; i>=0; i-=1)
+				if(cmpstr(outWave[i], "") == 0)
+					//InsertPoints/M=(inDim) INF, 1, indexWave
+					//indexWave[INF] = i
+					DeletePoints/M=(inDim) i, 1, outWave
+					//print i
+				endif
+			endfor
+			break
+	endswitch
+	return outWave
+End
+
+Function/WAVE cleanupZeroDims(inWave, inDim, [doInPlace])
+	Wave inWave
+	Variable inDim
+	Variable doInPlace
+	if(ParamIsDefault(doInPlace))
+		doInPlace = 0
+	endif
+	
+	String outWaveName = NameOfWave(inWave)
+	
+	switch(doInPlace)
+		case 0:
+			if(DataFolderExists("clean")==0)
+				NewDataFolder :clean
+			endif
+			Duplicate/O inWave, :clean:$outWaveName
+			Wave outWave = :clean:$outWaveName
+			break
+		case 1:
+			Wave outWave = inWave
+			break
+	endswitch
+	
+	Variable i
+	switch(inDim)
+		case 0:
+			for(i=0; i<DimSize(outWave,inDim); i+=1)
+				MatrixOp/O/FREE sumWave = sumRows(outWave)
+				if(sumWave[i] == 0)
+					DeletePoints/M=(inDim) i, 1, outWave
+					//print i
+				endif
+			endfor
+			break
+		case 1:
+			for(i=0; i<DimSize(outWave,inDim); i+=1)
+				MatrixOp/O/FREE sumWave = sumCols(outWave)
+				if(sumWave[0][i] == 0)
+					DeletePoints/M=(inDim) i, 1, outWave
+					//print i
+				endif
+			endfor
+			break
+	endswitch
+	return outWave
+End
+
+Function/WAVE cleanupEmptyDimsT(inWave, inDim)
+	Wave/T inWave
+	Variable inDim
+	if(DataFolderExists("clean")==0)
+		NewDataFolder :clean
+	endif
+	String outWaveName = NameOfWave(inWave)
+	Duplicate/O/T inWave, :clean:$outWaveName
+	Wave/T outWave = :clean:$outWaveName
 	
 	//outWave = outWave==0 ? NaN : outWave
 	Variable i
 	switch(inDim)
 		case 0:
 			for(i=0; i<DimSize(outWave,inDim); i+=1)
-				MatrixOp/O sumWave = sumRows(outWave)
-				if(sumWave[i] == 0)
+				if(cmpstr(outWave[i], "") == 0)
 					DeletePoints/M=(inDim) i, 1, outWave
-					print i
+					//print i
 				endif
 			endfor
 			break
 		case 1:
 			for(i=0; i<DimSize(outWave,inDim); i+=1)
-				MatrixOp/O sumWave = sumCols(outWave)
-				if(sumWave[0][i] == 0)
+				if(cmpstr(outWave[0][i], "") == 0)
 					DeletePoints/M=(inDim) i, 1, outWave
-					print i
+					//print i
 				endif
 			endfor
 			break
 	endswitch
+	return outWave
+End
+
+Function cleanupWaves1()
+	DFREF currentDF = GetDataFolderDFR()
+	Variable numWavesInDF = CountObjectsDFR(currentDF,1)
+	
+	Variable i
+	for(i=0; i<numWavesInDF; i+=1)
+		Wave currentWave = WaveRefIndexedDFR(currentDF,i)
+		if(WaveType(currentWave,1)==1)
+			cleanupZeroDims(currentWave,0)
+		elseif(WaveType(currentWave,1)==2)
+			cleanupEmptyDimsT(currentWave,0)
+		endif
+	endfor
+End
+
+Function groupConditionRowsToWaves2(Variable trainSecCond)
+	DFREF saveDFR = GetDataFolderDFR()
+	//SetDataFolder root:clean
+	String newDFname = "grouped_"+num2str(trainSecCond)+"s"
+	if(DataFolderExists(newDFname)==0)
+		NewDataFolder :$newDFname
+	endif
+	DFREF newDF = :$newDFname
+	DFREF currentDF = GetDataFolderDFR()
+	Variable numWavesInDF = CountObjectsDFR(currentDF,1)
+	
+	Wave/T w_info = TrainExperiments_allInfo
+	Wave/T w_RTSRinfo = TrainAmp_RTSRInfo
+	
+	Variable i, j
+	for(i=0; i<numWavesInDF; i+=1)
+		Wave currentWave = WaveRefIndexedDFR(currentDF,i)
+		if(WaveType(currentWave,1)==1)
+			String currentWaveName = NameOfWave(currentWave)
+			String newWaveName1 = "KO_"+currentWaveName
+			String newWaveName2 = "Het_"+currentWaveName
+			String newWaveName3 = "KO213_"+currentWaveName
+			Make/O/N=(1,DimSize(currentWave,1)) newDF:$newWaveName1
+			Make/O/N=(1,DimSize(currentWave,1)) newDF:$newWaveName2
+			Make/O/N=(1,DimSize(currentWave,1)) newDF:$newWaveName3
+			//Duplicate/O currentWave, :grouped:$newWaveName1, :grouped:$newWaveName2, :grouped:$newWaveName3
+			Wave newWave1 = newDF:$newWaveName1
+			Wave newWave2 = newDF:$newWaveName2
+			Wave newWave3 = newDF:$newWaveName3
+			Variable index1 = 0, index2 = 0, index3 = 0, index4 = 0, index5 = 0, index6 = 0
+			//newWave1 = 0
+			//newWave2 = 0
+			//newWave3 = 0
+			if(strsearch(currentWaveName,"RTSR",0) == -1)
+				for(j=0; j<DimSize(currentWave,0); j+=1)
+					String dimLabel1 = w_info[j][%fileName]+"_"+get_singleRegExMatch(w_info[j][%protocol],".([0-9]s)$")+"_"+num2str(str2num(w_info[j][%sweep]))+"_"+w_info[j][%folderLast]
+					Variable bool_condition2 = 0
+					if(str2num(w_info[j][%sweep]) == 1 && str2num(get_singleRegExMatch(w_info[j][%protocol],".([0-9])s$")) == trainSecCond)
+						bool_condition2 = 1
+					endif
+					
+					if(singleRegExMatch(w_info[j][%folderLast],"(?i)(KO)$")==1 && bool_condition2 == 1)
+						if(index1!=0)
+							InsertPoints/M=0 INF, 1, newWave1
+						endif
+						newWave1[INF][] = currentWave[j][q]
+						SetDimLabel 0, DimSize(newWave1,0)-1, $dimLabel1, newWave1
+						index1 += 1
+					endif
+					if(singleRegExMatch(w_info[j][%folderLast],"(?i)(het)$")==1 && bool_condition2 == 1)
+						if(index2!=0)
+							InsertPoints/M=0 INF, 1, newWave2
+						endif
+						newWave2[INF][] = currentWave[j][q]
+						SetDimLabel 0, DimSize(newWave2,0)-1, $dimLabel1, newWave2
+						index2 += 1
+					endif
+					if(singleRegExMatch(w_info[j][%folderLast],"(?i)(KO213)$")==1 && bool_condition2 == 1)
+						if(index3!=0)
+							InsertPoints/M=0 INF, 1, newWave3
+						endif
+						newWave3[INF][] = currentWave[j][q]
+						SetDimLabel 0, DimSize(newWave3,0)-1, $dimLabel1, newWave3
+						index3 += 1
+					endif
+				endfor
+			endif
+			if(strsearch(currentWaveName,"RTSR",0) >= 0)
+				for(j=0; j<DimSize(currentWave,0); j+=1)
+					String dimLabel2 = w_RTSRinfo[j][9]+"_"+get_singleRegExMatch(w_RTSRinfo[j][6],".([0-9]s)$")+"_"+num2str(str2num(w_RTSRinfo[j][3]))+"_"+w_RTSRinfo[j][10]
+					Variable bool_condition3 = 1
+					
+					if(singleRegExMatch(w_RTSRinfo[j][10],"(?i)(KO)$")==1 && bool_condition3 == 1)
+						if(index4!=0)
+							InsertPoints/M=0 INF, 1, newWave1
+						endif
+						newWave1[INF][] = currentWave[j][q]
+						SetDimLabel 0, DimSize(newWave1,0)-1, $dimLabel2, newWave1
+						index4 += 1
+					endif
+					if(singleRegExMatch(w_RTSRinfo[j][10],"(?i)(het)$")==1 && bool_condition3 == 1)
+						if(index5!=0)
+							InsertPoints/M=0 INF, 1, newWave2
+						endif
+						newWave2[INF][] = currentWave[j][q]
+						SetDimLabel 0, DimSize(newWave2,0)-1, $dimLabel2, newWave2
+						index5 += 1
+					endif
+					if(singleRegExMatch(w_RTSRinfo[j][10],"(?i)(KO213)$")==1 && bool_condition3 == 1)
+						if(index6!=0)
+							InsertPoints/M=0 INF, 1, newWave3
+						endif
+						newWave3[INF][] = currentWave[j][q]
+						SetDimLabel 0, DimSize(newWave3,0)-1, $dimLabel2, newWave3
+						index6 += 1
+					endif
+				endfor
+			endif
+			//cleanupZeroDims(newWave1,0, doInPlace=1)
+			//cleanupZeroDims(newWave2,0, doInPlace=1)
+			//cleanupZeroDims(newWave3,0, doInPlace=1)
+		endif
+	endfor
+	//SetDataFolder :grouped
+	//DFREF currentDF2 = GetDataFolderDFR()
+	//Variable numWavesInDF2 = CountObjectsDFR(currentDF2,1)
+	
+	//for(i=0; i<numWavesInDF2; i+=1)
+		//Wave currentWave2 = WaveRefIndexedDFR(currentDF2,i)
+		//if(WaveType(currentWave2,1)==1)
+			//cleanupZeroDims(currentWave2,0)
+		//elseif(WaveType(currentWave,1)==2)
+			//cleanupEmptyDimsT(currentWave,0)
+		//endif
+	//endfor
+	//cleanupWaves1()
+	SetDataFolder saveDFR
+End
+
+Function groupConditionRowsToWaves()
+	DFREF saveDFR = GetDataFolderDFR()
+	SetDataFolder root:clean
+	if(DataFolderExists("grouped")==0)
+		NewDataFolder :grouped
+	endif
+	DFREF currentDF = GetDataFolderDFR()
+	Variable numWavesInDF = CountObjectsDFR(currentDF,1)
+	
+	Wave/T w_info = TrainExperiments_allInfo
+	Wave/T w_RTSRinfo = TrainAmp_RTSRInfo
+	
+	Variable i, j
+	for(i=0; i<numWavesInDF; i+=1)
+		Wave currentWave = WaveRefIndexedDFR(currentDF,i)
+		if(WaveType(currentWave,1)==1)
+			String currentWaveName = NameOfWave(currentWave)
+			String newWaveName1 = "KO_"+currentWaveName
+			String newWaveName2 = "Het_"+currentWaveName
+			String newWaveName3 = "KO213_"+currentWaveName
+			Duplicate/O currentWave, :grouped:$newWaveName1, :grouped:$newWaveName2, :grouped:$newWaveName3
+			Wave newWave1 = :grouped:$newWaveName1
+			Wave newWave2 = :grouped:$newWaveName2
+			Wave newWave3 = :grouped:$newWaveName3
+			newWave1 = 0
+			newWave2 = 0
+			newWave3 = 0
+			if(strsearch(currentWaveName,"RTSR",0) == -1)
+				for(j=0; j<DimSize(currentWave,0); j+=1)
+					if(singleRegExMatch(w_info[j][%folderLast],"(?i)(KO)$")==1)
+						newWave1[j][] = currentWave[j][q]
+					endif
+					if(singleRegExMatch(w_info[j][%folderLast],"(?i)(het)$")==1)
+						newWave2[j][] = currentWave[j][q]
+					endif
+					if(singleRegExMatch(w_info[j][%folderLast],"(?i)(KO213)$")==1)
+						newWave3[j][] = currentWave[j][q]
+					endif
+				endfor
+			endif
+			if(strsearch(currentWaveName,"RTSR",0) >= 0)
+				for(j=0; j<DimSize(currentWave,0); j+=1)
+					if(singleRegExMatch(w_RTSRinfo[j][10],"(?i)(KO)$")==1)
+						newWave1[j][] = currentWave[j][q]
+					endif
+					if(singleRegExMatch(w_RTSRinfo[j][10],"(?i)(het)$")==1)
+						newWave2[j][] = currentWave[j][q]
+					endif
+					if(singleRegExMatch(w_RTSRinfo[j][10],"(?i)(KO213)$")==1)
+						newWave3[j][] = currentWave[j][q]
+					endif
+				endfor
+			endif
+			//cleanupZeroDims(newWave1,0, doInPlace=1)
+			//cleanupZeroDims(newWave2,0, doInPlace=1)
+			//cleanupZeroDims(newWave3,0, doInPlace=1)
+		endif
+	endfor
+	SetDataFolder :grouped
+	DFREF currentDF2 = GetDataFolderDFR()
+	Variable numWavesInDF2 = CountObjectsDFR(currentDF2,1)
+	
+	//for(i=0; i<numWavesInDF2; i+=1)
+		//Wave currentWave2 = WaveRefIndexedDFR(currentDF2,i)
+		//if(WaveType(currentWave2,1)==1)
+			//cleanupZeroDims(currentWave2,0)
+		//elseif(WaveType(currentWave,1)==2)
+			//cleanupEmptyDimsT(currentWave,0)
+		//endif
+	//endfor
+	cleanupWaves1()
+	SetDataFolder saveDFR
+End
+
+Function singleRegExMatch(inString, regExPattern)
+	String inString
+	String regExPattern
+	String outStr
+	Variable sweepOutInt
+	
+	SplitString/E=(regExPattern) inString, outStr
+	if(V_flag < 1)
+		//print "No RegEx match!"
+	endif
+	
+	return V_flag
+End
+
+Function testJumpCursor()
 	
 End
