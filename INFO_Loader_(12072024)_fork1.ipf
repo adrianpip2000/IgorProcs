@@ -543,7 +543,7 @@ proc LoadExperiments(ctrlName) : ButtonControl
 	NewDataFolder/O root:OrigData
 	SetDataFolder root:
 	time0=datetime
-	pathname=root:Data:S_path
+	//pathname=root:Data:S_path								//Changed how pathname is defined. Now it is instead retrieved from the 'folder' wave (see further down) -AdrianGR
 	groupnum=1 //Only 1st group are considered
 	
 	// Create list of items selected from 'protocol'
@@ -567,6 +567,7 @@ proc LoadExperiments(ctrlName) : ButtonControl
 	do
 		if (experimentsw[i]>=48)
 			pre_nametemp=experimentwave[i]
+			pathname=folder[i]					//Retrieving path since it is already defined in the 'folder' wave -AdrianGR
 
 			SetDataFolder root:Data
 			
@@ -583,8 +584,8 @@ proc LoadExperiments(ctrlName) : ButtonControl
 						if (seriesnum!=0)
 							print "pathname=",pathname
 							filenametemp=pathname+nametemp+".dat"	//":"
-							filenametemp=replacestring(":",filenametemp,"\\"+"\\") //necessary in using bpc_ReadHeka, because it is windows only
-							filenametemp=filenametemp[0]+":"+filenametemp[1,INF]
+							//filenametemp=replacestring(":",filenametemp,"\\")//+"\\") //necessary in using bpc_ReadHeka, because it is windows only
+							//filenametemp=filenametemp[0]+":"+filenametemp[1,INF]	//These two lines are no longer necessary when reading path from 'folder' wave -AdrianGR
 							
 							print "suffix=",suffix[n_exp]
 							

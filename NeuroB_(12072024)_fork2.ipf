@@ -4464,7 +4464,24 @@ SetDataFolder root:Results:
 		//Concatenate/O/NP=1 {refWave}, w_resSummaryTest
 End
 
-
+Function testNormalizeSomeMoreWaves(waveStr)
+	String waveStr
+	DFREF baseDir = root:imported:concat
+	SetDataFolder baseDir
+	String folderList = "grouped_9s;grouped_5s;grouped_3s;grouped_1s"
+	String prefixList = "Het_;KO_;KO213_;"
+	
+	Variable i,j,k
+	for(i=0; i<ItemsInList(folderList,";"); i+=1)
+		SetDataFolder baseDir:$StringFromList(i,folderList,";")
+		for(j=0; j<ItemsInList(prefixList,";"); j+=1)
+			String tempWaveName = StringFromList(j,prefixList,";") + waveStr
+			Wave tempWave = $tempWaveName
+			normalize2DWave(tempWave,normIndex=0,outWaveName=tempWaveName+"_NormV2")
+		endfor
+	endfor
+	SetDataFolder baseDir
+End
 
 // Function to normalize a wave -AdrianGR
 // Optional parameters can be supplied, otherwise it defaults to normalizing rows relative to first column and naming new wave with suffix "_Norm"
@@ -5356,7 +5373,7 @@ Function testConcatData2([saveRes])
 		concatWaves[k] = currentWave
 		SetDimLabel 0, k, $NameOfWave(currentWave), concatWaves
 		if(WaveType(currentWave,1)==1)
-			cleanupZeroDims2(currentWave,0,doInPlace=1)
+			cleanupZeroNanDims2(currentWave,0,doInPlace=1)
 		elseif(WaveType(currentWave,1)==2)
 			cleanupEmptyDimsT2(currentWave,0,doInPlace=1)
 		endif
@@ -5551,6 +5568,59 @@ Function/WAVE cleanupZeroDims2(inWave, inDim, [doInPlace])
 	return outWave
 End
 
+Function/WAVE cleanupZeroNanDims2(inWave, inDim, [doInPlace])
+	Wave inWave
+	Variable inDim
+	Variable doInPlace
+	if(ParamIsDefault(doInPlace))
+		doInPlace = 0
+	endif
+	
+	String outWaveName = NameOfWave(inWave)
+	
+	switch(doInPlace)
+		case 0:
+			if(DataFolderExists("clean")==0)
+				NewDataFolder :clean
+			endif
+			Duplicate/O inWave, :clean:$outWaveName
+			Wave outWave = :clean:$outWaveName
+			break
+		case 1:
+			Wave outWave = inWave
+			break
+	endswitch
+	
+	//Make/FREE/N=0 indexWave
+	
+	Variable i
+	switch(inDim)
+		case 0:
+			for(i=DimSize(outWave,inDim)-1; i>=0; i-=1)
+				MatrixOp/O/FREE sumWave = sumRows(outWave)
+				if(sumWave[i] == 0 || numType(sumWave[i]) == 2)
+					//InsertPoints/M=(inDim) INF, 1, indexWave
+					//indexWave[INF] = i
+					DeletePoints/M=(inDim) i, 1, outWave
+					//print i
+				endif
+			endfor
+			break
+		case 1:
+			for(i=DimSize(outWave,inDim)-1; i>=0; i-=1)
+				MatrixOp/O/FREE sumWave = sumCols(outWave)
+				if(sumWave[i] == 0 || numType(sumWave[i]) == 2)
+					//InsertPoints/M=(inDim) INF, 1, indexWave
+					//indexWave[INF] = i
+					DeletePoints/M=(inDim) i, 1, outWave
+					//print i
+				endif
+			endfor
+			break
+	endswitch
+	return outWave
+End
+
 Function/WAVE cleanupEmptyDimsT2(inWave, inDim, [doInPlace])
 	Wave/T inWave
 	Variable inDim
@@ -5697,10 +5767,19 @@ Function cleanupWaves1()
 	endfor
 End
 
-Function groupConditionRowsToWaves2(Variable trainSecCond)
+Function groupConditionRowsToWaves2(trainSecCond, [sweepNum, doRTSR_bool])
+	Variable trainSecCond
+	Variable sweepNum
+	Variable doRTSR_bool
+	if(ParamIsDefault(sweepNum))
+		sweepNum = 1
+	endif
+	if(ParamIsDefault(doRTSR_bool))
+		doRTSR_bool = 1
+	endif
 	DFREF saveDFR = GetDataFolderDFR()
 	//SetDataFolder root:clean
-	String newDFname = "grouped_"+num2str(trainSecCond)+"s"
+	String newDFname = "grouped_"+num2str(trainSecCond)+"s_"+num2str(sweepNum)
 	if(DataFolderExists(newDFname)==0)
 		NewDataFolder :$newDFname
 	endif
@@ -5716,16 +5795,37 @@ Function groupConditionRowsToWaves2(Variable trainSecCond)
 		Wave currentWave = WaveRefIndexedDFR(currentDF,i)
 		if(WaveType(currentWave,1)==1)
 			String currentWaveName = NameOfWave(currentWave)
-			String newWaveName1 = "KO_"+currentWaveName
-			String newWaveName2 = "Het_"+currentWaveName
-			String newWaveName3 = "KO213_"+currentWaveName
+			String prefix1 = "KO_"
+			String prefix2 = "Het_"
+			String prefix3 = "KO213_"
+			String newWaveName1 = prefix1+currentWaveName
+			String newWaveName2 = prefix2+currentWaveName
+			String newWaveName3 = prefix3+currentWaveName
+			String newInfoWaveName1 = prefix1+NameOfWave(w_info)
+			String newInfoWaveName2 = prefix2+NameOfWave(w_info)
+			String newInfoWaveName3 = prefix3+NameOfWave(w_info)
+			String newRTSRInfoWaveName1 = prefix1+NameOfWave(w_RTSRinfo)
+			String newRTSRInfoWaveName2 = prefix2+NameOfWave(w_RTSRinfo)
+			String newRTSRInfoWaveName3 = prefix3+NameOfWave(w_RTSRinfo)
 			Make/O/N=(1,DimSize(currentWave,1)) newDF:$newWaveName1
 			Make/O/N=(1,DimSize(currentWave,1)) newDF:$newWaveName2
 			Make/O/N=(1,DimSize(currentWave,1)) newDF:$newWaveName3
+			Make/T/O/N=(1,DimSize(w_info,1)) newDF:$newInfoWaveName1
+			Make/T/O/N=(1,DimSize(w_info,1)) newDF:$newInfoWaveName2
+			Make/T/O/N=(1,DimSize(w_info,1)) newDF:$newInfoWaveName3
+			Make/T/O/N=(1,DimSize(w_RTSRinfo,1)) newDF:$newRTSRInfoWaveName1
+			Make/T/O/N=(1,DimSize(w_RTSRinfo,1)) newDF:$newRTSRInfoWaveName2
+			Make/T/O/N=(1,DimSize(w_RTSRinfo,1)) newDF:$newRTSRInfoWaveName3
 			//Duplicate/O currentWave, :grouped:$newWaveName1, :grouped:$newWaveName2, :grouped:$newWaveName3
 			Wave newWave1 = newDF:$newWaveName1
 			Wave newWave2 = newDF:$newWaveName2
 			Wave newWave3 = newDF:$newWaveName3
+			Wave/T newInfoWave1 = newDF:$newInfoWaveName1
+			Wave/T newInfoWave2 = newDF:$newInfoWaveName2
+			Wave/T newInfoWave3 = newDF:$newInfoWaveName3
+			Wave/T newRTSRInfoWave1 = newDF:$newRTSRInfoWaveName1
+			Wave/T newRTSRInfoWave2 = newDF:$newRTSRInfoWaveName2
+			Wave/T newRTSRInfoWave3 = newDF:$newRTSRInfoWaveName3
 			Variable index1 = 0, index2 = 0, index3 = 0, index4 = 0, index5 = 0, index6 = 0
 			//newWave1 = 0
 			//newWave2 = 0
@@ -5734,37 +5834,46 @@ Function groupConditionRowsToWaves2(Variable trainSecCond)
 				for(j=0; j<DimSize(currentWave,0); j+=1)
 					String dimLabel1 = w_info[j][%fileName]+"_"+get_singleRegExMatch(w_info[j][%protocol],".([0-9]s)$")+"_"+num2str(str2num(w_info[j][%sweep]))+"_"+w_info[j][%folderLast]
 					Variable bool_condition2 = 0
-					if(str2num(w_info[j][%sweep]) == 1 && str2num(get_singleRegExMatch(w_info[j][%protocol],".([0-9])s$")) == trainSecCond)
+					if(str2num(w_info[j][%sweep]) == sweepNum && str2num(get_singleRegExMatch(w_info[j][%protocol],".([0-9])s$")) == trainSecCond)
 						bool_condition2 = 1
 					endif
 					
 					if(singleRegExMatch(w_info[j][%folderLast],"(?i)(KO)$")==1 && bool_condition2 == 1)
 						if(index1!=0)
 							InsertPoints/M=0 INF, 1, newWave1
+							InsertPoints/M=0 INF, 1, newInfoWave1
 						endif
 						newWave1[INF][] = currentWave[j][q]
 						SetDimLabel 0, DimSize(newWave1,0)-1, $dimLabel1, newWave1
+						newInfoWave1[INF][] = w_info[j][q]
+						SetDimLabel 0, DimSize(newInfoWave1,0)-1, $dimLabel1, newInfoWave1
 						index1 += 1
 					endif
 					if(singleRegExMatch(w_info[j][%folderLast],"(?i)(het)$")==1 && bool_condition2 == 1)
 						if(index2!=0)
 							InsertPoints/M=0 INF, 1, newWave2
+							InsertPoints/M=0 INF, 1, newInfoWave2
 						endif
 						newWave2[INF][] = currentWave[j][q]
 						SetDimLabel 0, DimSize(newWave2,0)-1, $dimLabel1, newWave2
+						newInfoWave2[INF][] = w_info[j][q]
+						SetDimLabel 0, DimSize(newInfoWave2,0)-1, $dimLabel1, newInfoWave2
 						index2 += 1
 					endif
 					if(singleRegExMatch(w_info[j][%folderLast],"(?i)(KO213)$")==1 && bool_condition2 == 1)
 						if(index3!=0)
 							InsertPoints/M=0 INF, 1, newWave3
+							InsertPoints/M=0 INF, 1, newInfoWave3
 						endif
 						newWave3[INF][] = currentWave[j][q]
 						SetDimLabel 0, DimSize(newWave3,0)-1, $dimLabel1, newWave3
+						newInfoWave3[INF][] = w_info[j][q]
+						SetDimLabel 0, DimSize(newInfoWave3,0)-1, $dimLabel1, newInfoWave3
 						index3 += 1
 					endif
 				endfor
 			endif
-			if(strsearch(currentWaveName,"RTSR",0) >= 0)
+			if(strsearch(currentWaveName,"RTSR",0) >= 0 && doRTSR_bool == 1)
 				for(j=0; j<DimSize(currentWave,0); j+=1)
 					String dimLabel2 = w_RTSRinfo[j][9]+"_"+get_singleRegExMatch(w_RTSRinfo[j][6],".([0-9]s)$")+"_"+num2str(str2num(w_RTSRinfo[j][3]))+"_"+w_RTSRinfo[j][10]
 					Variable bool_condition3 = 1
@@ -5772,25 +5881,34 @@ Function groupConditionRowsToWaves2(Variable trainSecCond)
 					if(singleRegExMatch(w_RTSRinfo[j][10],"(?i)(KO)$")==1 && bool_condition3 == 1)
 						if(index4!=0)
 							InsertPoints/M=0 INF, 1, newWave1
+							InsertPoints/M=0 INF, 1, newRTSRInfoWave1
 						endif
 						newWave1[INF][] = currentWave[j][q]
 						SetDimLabel 0, DimSize(newWave1,0)-1, $dimLabel2, newWave1
+						newRTSRInfoWave1[INF][] = w_RTSRinfo[j][q]
+						SetDimLabel 0, DimSize(newRTSRInfoWave1,0)-1, $dimLabel2, newRTSRInfoWave1
 						index4 += 1
 					endif
 					if(singleRegExMatch(w_RTSRinfo[j][10],"(?i)(het)$")==1 && bool_condition3 == 1)
 						if(index5!=0)
 							InsertPoints/M=0 INF, 1, newWave2
+							InsertPoints/M=0 INF, 1, newRTSRInfoWave2
 						endif
 						newWave2[INF][] = currentWave[j][q]
 						SetDimLabel 0, DimSize(newWave2,0)-1, $dimLabel2, newWave2
+						newRTSRInfoWave2[INF][] = w_RTSRinfo[j][q]
+						SetDimLabel 0, DimSize(newRTSRInfoWave2,0)-1, $dimLabel2, newRTSRInfoWave2
 						index5 += 1
 					endif
 					if(singleRegExMatch(w_RTSRinfo[j][10],"(?i)(KO213)$")==1 && bool_condition3 == 1)
 						if(index6!=0)
 							InsertPoints/M=0 INF, 1, newWave3
+							InsertPoints/M=0 INF, 1, newRTSRInfoWave3
 						endif
 						newWave3[INF][] = currentWave[j][q]
 						SetDimLabel 0, DimSize(newWave3,0)-1, $dimLabel2, newWave3
+						newRTSRInfoWave3[INF][] = w_RTSRinfo[j][q]
+						SetDimLabel 0, DimSize(newRTSRInfoWave3,0)-1, $dimLabel2, newRTSRInfoWave3
 						index6 += 1
 					endif
 				endfor
