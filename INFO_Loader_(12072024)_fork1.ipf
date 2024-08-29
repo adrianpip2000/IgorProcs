@@ -1,6 +1,6 @@
 // ***Version history in JBS lab***
 // INFO_Loader_(23032024).ipf --> INFO_Loader_(12072024)_fork1.ipf
-// - Substantial modifications done by AdrianGR during July 2024
+// - Substantial modifications done by AdrianGR during summer of 2024
 //
 //
 
@@ -36,7 +36,7 @@ function Initialize_Variables()
 	//temp_list=Removefromlist("type",S_wavenames)
 	//protocol_list=temp_list
 	
-	String removeThese = "name;group;type;suffix;folder"
+	String removeThese = "name;group;type;suffix;folder"			//Simplified removal -AdrianGR
 	protocol_list=RemoveFromList(removeThese, S_wavenames, ";")
 	//protocol_list=RemoveFromList("group",S_wavenames)
 	//protocol_list=RemoveFromList("type",S_wavenames)
@@ -105,7 +105,7 @@ function Accessories()
 	ListBox experimentbox,pos={385,140},size={150,450},listWave=root:experimentwave
 	ListBox experimentbox,selWave=root:experimentsw,row= 1,mode= 4
 
-	Button button_Update,pos={385,620},size={60,50},proc=UpdateButtonProc,title="Update",fColor=(3341,33153,54484)
+	Button button_Update,pos={385,620},size={60,50},proc= ButtonProc_Update,title="Update",fColor=(3341,33153,54484)
 	//Button button_SelectAllExp,pos={167,590},size={100,20},proc=ButtonProc_SelAllExperiments,title="Select All"
 	//Button button_SelNoneExp,pos={272,590},size={101,20},proc=ButtonProc_SelNoneExperiments,title="Select None"
 	Button button_ResetListBoxes,pos={240,660},size={60,20},proc=ButtonProc_ResetListBoxes,title="RESET!",fColor=(49087,6939,6939)
@@ -253,6 +253,7 @@ Window Panel_NeurignacioBrowser() : Panel
 	RenameWindow #,BrowseGraph
 	SetActiveSubwindow ##
 	
+	//Added a way to do replacements in protocolname because bpc_loader has a character limit -AdrianGR
 	CheckBox chk_ProtocolstrCleanup1,pos={432,400},size={20,20},title="Use cleaned protocol name as per Adrian rules?"
 	CheckBox chk_ProtocolstrCleanup1, proc=proc_chk_Protocolstr
 	String/G replaceSubStr2 = ""
@@ -265,15 +266,12 @@ Window Panel_NeurignacioBrowser() : Panel
 	SetVariable setvar_replaceSubStr2with,pos={432,460},size={60,20},bodyWidth=80,fsize=10,title="with this"
 	SetVariable setvar_replaceSubStr2with,help={"...and replace with this"}
 	SetVariable setvar_replaceSubStr2with,value=replaceSubStr2with
-	//SetVariable setvar_replaceSubStr2preview,pos={432,470},size={60,20},bodyWidth=80,fsize=10,title="preview:"
-	//SetVariable setvar_replaceSubStr2preview,help={"Preview"}
-	//SetVariable setvar_replaceSubStr2preview,value=protocolstr,disable=2,live=1
 
 	
 	//CheckBox chk_SelAllSweeps,pos={432.00,360.00},size={20.00,20.00},title="Select all sweeps?"
 	//CheckBox chk_SelAllSweeps,help={"If checked, all sweeps in current serie will be added"}
 	
-	ControlUpdate popup_Group //These two make sure that the popups are updated after file has been loaded -AdrianGR
+	ControlUpdate popup_Group //These two make sure that the popup menus are updated after file has been loaded -AdrianGR
 	ControlUpdate popup_Series
 EndMacro
 
@@ -362,13 +360,17 @@ function CreateGroupWave(wavein)
 	while (i<=111)
 end
 
-proc SelectExperiments()
+Function SelectExperiments()
 	string listout
 	string groupcriteria, typecriteria, culturecriteria, protocolcriteria
-	variable match,i,j,n,n_protocol=0
+	variable match, i, j, n, n_protocol=0
 	string item, strtemp, protocolwave_ref
 	
+	SetDataFolder root:Data
+	Wave/T group, type, folder, name, suffix
 	Setdatafolder root:
+	Wave/T groupwave, typewave, culturewave, protocolwave, experimentwave
+	Wave groupsw, typesw, culturesw, protocolsw
 	listout=""
 	// Create list of items selected from 'group'
 	groupcriteria=""
@@ -423,17 +425,18 @@ proc SelectExperiments()
 	//Check if experiment matches with criteria
 	i=0
 	do
-		if ((strsearch(groupcriteria,group[i],0)>=0) && (strsearch(typecriteria,type[i],0)>=0) && strsearch(culturecriteria, folder[i],0)>=0))
+		if ((strsearch(groupcriteria,group[i],0)>=0) && (strsearch(typecriteria,type[i],0)>=0) && (strsearch(culturecriteria, folder[i],0)>=0))
 			match=1
 		else
 			match=0
 		endif
 		print i
-		if (match==1) //name(i) matched grop and type
+		if (match==1) //name(i) matched group and type
 			j=0
 			do
 				item=StringFromList(j,protocolcriteria)
-				strtemp=$item(i)
+				Wave/T itemWaveRef = $item
+				strtemp=itemWaveRef(i)
 				if (cmpstr(strtemp,"")!=0)
 					//listout += name[i]+suffix[i] + ";"
 					listout += name[i]+suffix[i]+" series= "+strtemp
@@ -448,47 +451,32 @@ proc SelectExperiments()
 	while (i<=n-1)
 	SetDataFolder root:
 	if (strlen(listout)<=0)
-		experimentwave[]="" //This just throws an error, so I disabled it -AdrianGR
+		experimentwave[]=""
 		Abort "No Experiments were found.\rPossibly no experiment satisfies criteria."
 	else
-		ListTowave(listout,experimentwave)
+		ListToWave(listout,experimentwave)
 	endif
 end
+
+Function ButtonProc_Update(ctrlName) : ButtonControl
+	String ctrlName
+	variable n
+	wave/T experimentwave
+	wave experimentsw
+	
+	//execute "Selectexperiments()"
+	SelectExperiments()
+	n=numpnts(experimentwave)
+	//Redimension/N=0 experimentsw
+	Redimension/N=(n) experimentsw
+	experimentsw=32
+	ListBox experimentbox listwave=experimentwave,selwave=experimentsw,mode=4
+End
 
 proc CalcRGB(red,blue,green)
 	variable red,blue,green
 	printf "%g,%g,%g",red*65535/255,blue*65535/255,green*65535/255 
 end
-
-////////////////////////////////////////////////////
-// Just testing some things -AdrianGR
-
-Function [variable R, variable G, variable B] RGBconv_sub (variable red, variable blue, variable green)
-	//variable red,blue,green
-	variable cFactor = 65535/255
-	//cFactor = 65535/255
-	return [red*cFactor, blue*cFactor, green*cFactor]
-end
-
-Function callRGB()
-	variable red_out, green_out, blue_out
-	[red_out, green_out, blue_out] = RGBconv_sub(122, 201, 2)
-	print red_out, green_out, blue_out
-End
-////////////////////////////////////////////////////
-
-Function UpdateButtonProc(ctrlName) : ButtonControl
-	String ctrlName
-	variable n
-	wave experimentwave, experimentsw
-	
-	execute "Selectexperiments()"
-	n=numpnts(experimentwave)
-	//Redimension/N=0 experimentsw
-	Redimension/N=(n) experimentsw
-	experimentsw=32
-	listbox experimentbox listwave=experimentwave,selwave=experimentsw,mode=4
-End
 
 function FindStringValue(str,w)
 	string str
@@ -586,7 +574,7 @@ proc LoadExperiments(ctrlName) : ButtonControl
 							print "pathname=",pathname
 							filenametemp=pathname+nametemp+".dat"	//":"
 							filenametemp=replacestring(":",filenametemp,"\\")//+"\\") //necessary in using bpc_ReadHeka, because it is windows only
-							filenametemp=filenametemp[0]+":"+filenametemp[1,INF]	//These two lines are no longer necessary when reading path from 'folder' wave -AdrianGR
+							filenametemp=filenametemp[0]+":"+filenametemp[1,INF]
 							
 							print "suffix=",suffix[n_exp]
 							
@@ -867,19 +855,19 @@ Function ButtonProc_SelAllGeneric(ctrlName) : ButtonControl
 	
 	strswitch(ctrlName)
 		case "button_SelAllProtocols":
-			wave checkThisWave = protocolsw
+			wave checkThisWave = root:protocolsw
 		break
 		case "button_SelAllGroups":
-			wave checkThisWave = groupsw
+			wave checkThisWave = root:groupsw
 		break
 		case "button_SelAllTypes":
-			wave checkThisWave = typesw
+			wave checkThisWave = root:typesw
 		break
 		case "button_SelAllFolders":
-			wave checkThisWave = culturesw
+			wave checkThisWave = root:culturesw
 		break
 		case "button_SelAllExperiments":
-			wave checkThisWave = experimentsw
+			wave checkThisWave = root:experimentsw
 		break
 		case "button_SelAllPGTF":
 			fSelAllPGTF()
@@ -929,14 +917,17 @@ End
 
 // Helper function for selecting all or none -AdrianGR
 Function fSelAllPGTF()
-	wave protocolsw,groupsw,typesw,culturesw
+	wave protocolsw = root:protocolsw
+	wave groupsw = root:groupsw
+	wave typesw = root:typesw
+	wave culturesw = root:culturesw
 	if(WaveExists(temp_comboWave)==1)
 		KillWaves temp_comboWave
 	endif
 	wave temp_comboWave
 	Concatenate/NP {protocolsw,groupsw,typesw,culturesw}, temp_comboWave
 	
-	if(howManySel(temp_comboWave)>>0)
+	if(howManySel(temp_comboWave)>0)
 		protocolsw=32
 		groupsw=32
 		typesw=32
@@ -1236,13 +1227,11 @@ Function ButtonProc_TreeArrows(ctrlName) : ButtonControl
 		GroupCurrent -=1
 		SweepCurrent=0
 		PopUpMenu PopUp_Group mode=GroupCurrent
-		//ControlUpdate popup_Series
 		DisplayNewGraph=1
 	elseif ((cmpstr(ctrlName,"Button_GroupNext")==0) && (GroupCurrent<GroupTot))
 		GroupCurrent +=1
 		SweepCurrent=0
 		PopUpMenu PopUp_Group mode=GroupCurrent
-		//ControlUpdate popup_Series
 		DisplayNewGraph=1
 	elseif ((cmpstr(ctrlName,"Button_SeriePrevious")==0) && (SeriesCurrent>1))
 		SeriesCurrent -=1
@@ -1291,7 +1280,7 @@ Function ButtonProc_FileArrows(ctrlName) : ButtonControl
 	variable DisplayNewGraph=0
 	string namestr
 
-	if ((cmpstr(ctrlName,"Button_FilePrevious")==0) && (index_DAT>0))
+	if ((cmpstr(ctrlName,"Button_FilePrevious")==0) && (index_DAT>=0))
 		indextemp=index_DAT-1
 		namestr=StringFromList(indextemp, DATfiles)
 		if (strlen(namestr)==0)
@@ -1317,17 +1306,7 @@ Function ButtonProc_FileArrows(ctrlName) : ButtonControl
 		SVAR DATfilename
 		DATfilename=StringFromList(index_DAT, DATfiles)
 		RefreshFirstFile(DATfilename)
-		//refreshControls()
 	endif
-End
-
-//NOT WORKING - This function is just to quickly refresh the controls and popupmenus and such -AdrianGR
-Function refreshControls()
-	NVAR GroupCurrent, SeriesCurrent, SweepCurrent
-	//SweepCurrent = 0
-	PopUpMenu PopUp_Group mode=GroupCurrent
-	PopUpMenu PopUp_Series mode=SeriesCurrent
-	RefreshNewSweeps(GroupCurrent, SeriesCurrent, SweepCurrent)
 End
 
 Function ButtonProc_ZoomOUT(ctrlName) : ButtonControl
@@ -1382,7 +1361,7 @@ Function ButtonProc_AddExperiment(ctrlName) : ButtonControl
 	if (FindListItem("DataTable", ChildWindowList("Panel_NeurignacioBrowser"))<0)
 		edit/HOST=Panel_NeurignacioBrowser/N=DataTable/W=(185,555,1280,1024) folder, name, suffix, group, type
 		Button button_save,pos={220,280},size={50,50},proc=ButtonProc_SaveTable,title="Save",help={"Save table to file"},fStyle=1,fColor=(16384,28160,65280)	//Added by Jakob to allow saving table to file
-		Button button_rmLast, pos={300,295}, size={75,20}, proc=ButtonProc_rmLast, title="Remove last", fsize=10, fColor=(40000,0,0) //Button for removing the last appended series from the table -AdrianGR
+		//Button button_rmLast, pos={300,295}, size={75,20}, proc=ButtonProc_rmLast, title="Remove last", fsize=10, fColor=(40000,0,0) //DOES NOT WORK. Button for removing the last appended series from the table -AdrianGR
 	endif
 	CheckDisplayed/W=Panel_NeurignacioBrowser#DataTable w_protocol
 	if (V_Flag==0)
@@ -1564,7 +1543,7 @@ function RefreshFirstFile(DATfilename)
 	NVAR SeriesCurrent
 	SeriesCurrent=1
 	NVAR SweepCurrent
-	SweepCurrent=1 //Changed to 0 because 1 is passed to fLoadPulse anyway -AdrianGR
+	SweepCurrent=1
 	
 
 	fLoadPulse(GroupCurrent, SeriesCurrent,1,gVersion,folderstr+DATfilename) //Load Pulse ".dat"

@@ -2,7 +2,7 @@
 //////////// *** Version history in JBS lab *** ///////////////////////////
 ///////////////////////////////////////////////////////////////////////////
 // NeuroB_(27032024)_fork1.ipf --> NeuroB_(12072024)_fork2.ipf
-// - Substantial modifications done by AdrianGR during July-August 2024
+// - Substantial modifications done by AdrianGR during summer of 2024
 //
 //
 ///////////////////////////////////////////////////////////////////////////
@@ -310,7 +310,7 @@ SetDrawEnv/W=NeuroBunny fname="Arial",fsize=11, save
 		Button ctrlAutoscale,pos={5,530},size={90,30},proc=procMenuNB,title="Autoscale",win=NeuroBunny, fsize=10
 		Button ctrlBL1a,pos={5,565},size={90,20},proc=procMenuNB,title="Shift @ Start",win=NeuroBunny, fsize=10
 		Button ctrlBL1b,pos={100,565},size={90,20},proc=procMenuNB,title="Shift [A,B]",win=NeuroBunny, fsize=10
-		Button ctrlBLstartToA,pos={5,590},size={90,20},proc=procMenuNB,title="Shift [start,A]",win=NeuroBunny, fsize=10
+		Button ctrlBLstartToA,pos={5,590},size={90,20},proc=procMenuNB,title="Shift [start,A]",win=NeuroBunny, fsize=10 //-AdrianGR
 		Button ctrlBL2a,pos={5,615},size={90,20},proc=procMenuNB,title="Corr. Full Trace", fsize=10
 		Button ctrlBL2b,pos={100,615},size={90,20},proc=procMenuNB,title="Corr. [A,B][C,D]", fsize=10
 		Button ctrlResWave,pos={5,650},size={90,20},proc=proc_Init,title="Init",win=NeuroBunny, fsize=10, fColor=(51143,62708,65535)
@@ -376,13 +376,15 @@ SetDrawEnv/W=NeuroBunny fname="Arial",fsize=11, save
 	
 	DrawLine/W=NeuroBunny 5,430,190,430
 	DrawLine/W=NeuroBunny 5,432,190,432
-			CheckBox checkFixCursor,pos={10, 445}, help={"Check if you want to fix cursor"}, noproc, title="fix cursors",win=NeuroBunny, fsize=10			
+			CheckBox checkFixCursor,pos={10, 445}, help={"Check if you want to fix cursor"}, proc=proc_checkFixCursors, title="fix cursors",win=NeuroBunny, fsize=10			
 			Button ctrlForwA,pos={50,470},size={40,20},fColor=(20,43,158),proc=proc_ForwA,title="A right",win=NeuroBunny,disable=0, fsize=10
 			Button ctrlBackwA,pos={10,470},size={40, 20},fColor=(20,43,158),proc=proc_BackwA,title="A left",win=NeuroBunny,disable=0, fsize=10
 			Button ctrlForwB,pos={50,490},size={40,20},fColor=(20,43,158),proc=proc_ForwB,title="B right",win=NeuroBunny,disable=0, fsize=10
 			Button ctrlBackwB,pos={10,490},size={40,20},fColor=(20,43,158),proc=proc_BackwB,title="B left",win=NeuroBunny,disable=0, fsize=10
+			
+			//Some extra functionality -AdrianGR
 			CheckBox chk_IgnoreSavedCursors,pos={80, 445},value=1, help={"Check to ignore saved cursor positions"}, noproc, title="Ignore saved cursors",win=NeuroBunny, fsize=10
-			Button button_RefreshCursors,pos={100,470},size={80,20},proc=proc_button_RefreshCursors,title="Refresh cursors",win=NeuroBunny,disable=0, fsize=10
+			Button button_RefreshCursors,pos={100,470},size={80,20},proc=proc_button_RefreshCursors,title="Refresh cursors",win=NeuroBunny,disable=2, fsize=10
 			Button button_initRTSRpanel,pos={150,675},size={40,15},proc=proc_button_initRTSRpanel,title="RTSR",win=NeuroBunny,disable=0, fsize=10
 End
 
@@ -620,29 +622,6 @@ Function AnalysisTab(name,tab)
 	endif
 End
 
-Function testCur()
-	STRUCT RGBColor rgb
-	
-End
-
-Structure testcurRGB
-	STRUCT RGBColor A_RGB
-	STRUCT RGBColor B_RGB
-	STRUCT RGBColor C_RGB
-	STRUCT RGBColor D_RGB
-EndStructure
-
-Function [Variable r, Variable g, Variable b] what()
-	r = 0
-	g = 0
-	b = 55555
-	return [r,g,b]
-End
-
-Function testwhatf()
-	STRUCT testcurRGB cr
-	cr.A_RGB.red = 10
-End
 
 Function setCursorsInit(String inWave)
 	DFREF saveDFR = GetDataFolderDFR()				//Save initial data folder
@@ -687,6 +666,7 @@ End
 Function DisplayNextWave(list)
 	String list 								// A semicolon-separated list generated while initialization
 	SVAR gTheWave=root:Globals:gTheWave, gWaveList=root:Globals:gWaveList
+	NVAR gwaveindex=root:Globals:gwaveindex//, gCursorA=root:Globals:gCursorA, gCursorB=root:Globals:gCursorB, gCursorC=root:Globals:gCursorC, gCursorD=root:Globals:gCursorD
 	Variable x0, x1, x2, x3
 	
 	ControlInfo /W=NeuroBunny checkFixCursor
@@ -736,14 +716,14 @@ End
 
 Function DisplayPreviousWave(list)
 	String list 								// A semicolon-separated list generated while initialization
-	SVAR gTheWave=root:Globals:gTheWave
-	NVAR gwaveindex=root:Globals:gwaveindex, gCursorA=root:Globals:gCursorA, gCursorB=root:Globals:gCursorB, gCursorC=root:Globals:gCursorC, gCursorD=root:Globals:gCursorD
-	SVAR gWaveList=root:Globals:gWaveList
+	SVAR gTheWave=root:Globals:gTheWave, gWaveList=root:Globals:gWaveList
+	NVAR gwaveindex=root:Globals:gwaveindex//, gCursorA=root:Globals:gCursorA, gCursorB=root:Globals:gCursorB, gCursorC=root:Globals:gCursorC, gCursorD=root:Globals:gCursorD
+	Variable x0, x1, x2, x3
 	
 	ControlInfo /W=NeuroBunny checkFixCursor
 	variable flag_checkFixCursor = V_Value
 	if (V_Value==1)
-		Variable x0, x1, x2, x3
+		//Variable x0, x1, x2, x3
 		x0=xcsr(A, "Experiments")
 		x1=xcsr(B, "Experiments")
 		x2=xcsr(C, "Experiments")
@@ -785,6 +765,7 @@ End
 
 
 //Handles checking and setting of cursors -AdrianGR
+//Using fixed cursors overrides saved cursors functionality
 Function refreshCursors()
 	SVAR gTheWave=root:Globals:gTheWave
 	Variable x0, x1, x2, x3
@@ -797,6 +778,19 @@ Function refreshCursors()
 	Variable flag_IgnoreSavedCursors = V_Value
 	Variable cursorsFound, cursorsFoundIndex, curA, curB, curC, curD
 	[cursorsFound, cursorsFoundIndex, curA, curB, curC, curD] = getSavedCursors(gTheWave)
+	
+	if(flag_checkFixCursor==1)
+		NVAR gCursorA=root:gCursorA, gCursorB=root:gCursorB, gCursorC=root:gCursorC, gCursorD=root:gCursorD
+		KillWindow/Z Experiments
+		Display/N=Experiments/K=1/W=(180,50,955,700) $gTheWave
+		ModifyGraph/W=Experiments rgb=(0,39168,0)
+		ShowInfo/W=Experiments
+		Cursor/C=(65535,0,0)/W=Experiments/H=1/S=1/L=1 A, $gTheWave, gCursorA
+		Cursor/C=(65535,0,0)/W=Experiments/H=1/S=1/L=1 B, $gTheWave, gCursorB
+		Cursor/C=(65535,33232,0)/W=Experiments/H=1/S=1/L=1 C, $gTheWave, gCursorC
+		Cursor/C=(65535,33232,0)/W=Experiments/H=1/S=1/L=1 D, $gTheWave, gCursorD
+		print "Using fixed cursors instead of possible saved cursors."
+	endif
 	
 	if(flag_checkFixCursor==0)
 		if(cursorsFound==1 && flag_IgnoreSavedCursors==0)
@@ -830,10 +824,7 @@ Function refreshCursors()
 				CheckBox chk_IgnoreSavedCursors, win=NeuroBunny, value=1
 			endif
 			//NVAR gwaveindex=root:Globals:gwaveindex, gCursorA=root:gCursorA, gCursorB=root:gCursorB, gCursorC=root:gCursorC, gCursorD=root:gCursorD
-		endif	
-	elseif(flag_checkFixCursor==1)
-		DoAlert 0, "Saved cursors functionality is not (yet) compatible with fixed cursors!"
-		abort
+		endif
 	endif
 		
 	SetDataFolder root:
@@ -2139,18 +2130,21 @@ Function Trains_Amp()
 	variable post_pulse_baseline, V_avg, i_loc//, K0 //K0 should not be declared because it is a system variable! -AdrianGR
 	
 	//Section added to enable retrieval of saved cursor positions/saving new cursor positions -AdrianGR
+	ControlInfo/W=NeuroBunny checkFixCursors
+	Variable flag_checkFixCursors = V_Value
 	ControlInfo/W=NeuroBunny chk_IgnoreSavedCursors
-	variable flag_IgnoreSavedCursors = V_Value
-	variable cursorsFound, cursorsFoundIndex, curA, curB, curC, curD
+	Variable flag_IgnoreSavedCursors = V_Value
+	Variable cursorsFound, cursorsFoundIndex, curA, curB, curC, curD
 	[cursorsFound, cursorsFoundIndex, curA, curB, curC, curD] = getSavedCursors(gTheWave)
-	if(cursorsFound==1 && flag_IgnoreSavedCursors==0)
+	
+	if(cursorsFound==1 && flag_IgnoreSavedCursors==0 && flag_checkFixCursors==0)
 		print("Saved cursors found. Will be used for analysis.")
 		x0=curA
 		x1=curB
 		dx=curB-curA
 		x2=curC
-	elseif(cursorsFound==0 || flag_IgnoreSavedCursors==1)
-		print("Using new cursors for analysis and saving them.")
+	elseif(cursorsFound==0 || flag_IgnoreSavedCursors==1 || flag_checkFixCursors==1)
+		print("Using new (or fixed) cursors for analysis and saving them.")
 		x0=xcsr(A, "Experiments")
 		x1=xcsr(B, "Experiments")
 		dx=xcsr(B, "Experiments")-xcsr(A, "Experiments")
@@ -2192,31 +2186,31 @@ Function Trains_Amp()
 	if (WaveExists('TrainAmp_fromInitBaseline_Norm')==0)		//Wave for saving normalized amplitudes to level of end of previous pulse //-AdrianGR
 		Make/N=(1,cols) 'TrainAmp_fromInitBaseline_Norm'
 	endif
-	if (WaveExists('TrainAmp_ASyncAUC')==0)		//Wave for saving asyncronous AUC (aka. async. 'charge') for each pulse -AdrianGR
-		Make/N=(1,cols) 'TrainAmp_ASyncAUC'
-	endif
-	if (WaveExists('TrainAmp_ASyncLineX')==0)		//Wave for saving async. release X-coordinates -AdrianGR
-		Make/N=(1,cols+1) 'TrainAmp_ASyncLineX'
-	endif
-	if (WaveExists('TrainAmp_ASyncLineY')==0)		//Wave for saving async. release Y-coordinates -AdrianGR
-		Make/N=(1,cols+1) 'TrainAmp_ASyncLineY'
-	endif
-	if (WaveExists('TrainAmp_SyncAUC')==0)			//Wave for saving syncronous AUC (aka. sync. 'charge') for each pulse -AdrianGR
-		Make/N=(1,cols) 'TrainAmp_SyncAUC'
-	endif
-	if (WaveExists('TrainAmp_baselineX')==0)		//Wave for saving baseline X-coordinates -AdrianGR
-		Make/N=(1,cols+1) 'TrainAmp_baselineX'
-	endif
-	if (WaveExists('TrainAmp_baselineY')==0)		//Wave for saving baseline Y-coordinates -AdrianGR
-		Make/N=(1,cols+1) 'TrainAmp_baselineY'
-	endif
-	if (WaveExists('TrainAmp_ASyncAUC_cumulative')==0)	//Wave for saving cumulative async. AUC -AdrianGR
-		Make/N=(1,cols) 'TrainAmp_ASyncAUC_cumulative'
-	endif
-	if (WaveExists('TrainAmp_SyncAUC_cumulative')==0)	//Wave for saving cumulative sync. AUC -AdrianGR
-		Make/N=(1,cols) 'TrainAmp_SyncAUC_cumulative'
-	endif
-	if (WaveExists('TrainAmp_CTimepoints')==0)	//Wave for saving timing of each stimulation -AdrianGR
+//	if (WaveExists('TrainAmp_ASyncAUC')==0)		//Wave for saving asyncronous AUC (aka. async. 'charge') for each pulse -AdrianGR
+//		Make/N=(1,cols) 'TrainAmp_ASyncAUC'
+//	endif
+//	if (WaveExists('TrainAmp_ASyncLineX')==0)		//Wave for saving async. release X-coordinates -AdrianGR
+//		Make/N=(1,cols+1) 'TrainAmp_ASyncLineX'
+//	endif
+//	if (WaveExists('TrainAmp_ASyncLineY')==0)		//Wave for saving async. release Y-coordinates -AdrianGR
+//		Make/N=(1,cols+1) 'TrainAmp_ASyncLineY'
+//	endif
+//	if (WaveExists('TrainAmp_SyncAUC')==0)			//Wave for saving syncronous AUC (aka. sync. 'charge') for each pulse -AdrianGR
+//		Make/N=(1,cols) 'TrainAmp_SyncAUC'
+//	endif
+//	if (WaveExists('TrainAmp_baselineX')==0)		//Wave for saving baseline X-coordinates -AdrianGR
+//		Make/N=(1,cols+1) 'TrainAmp_baselineX'
+//	endif
+//	if (WaveExists('TrainAmp_baselineY')==0)		//Wave for saving baseline Y-coordinates -AdrianGR
+//		Make/N=(1,cols+1) 'TrainAmp_baselineY'
+//	endif
+//	if (WaveExists('TrainAmp_ASyncAUC_cumulative')==0)	//Wave for saving cumulative async. AUC -AdrianGR
+//		Make/N=(1,cols) 'TrainAmp_ASyncAUC_cumulative'
+//	endif
+//	if (WaveExists('TrainAmp_SyncAUC_cumulative')==0)	//Wave for saving cumulative sync. AUC -AdrianGR
+//		Make/N=(1,cols) 'TrainAmp_SyncAUC_cumulative'
+//	endif
+	if (WaveExists('TrainAmp_CTimepoints')==0)			//Wave for saving timing of each stimulation -AdrianGR
 		Make/D/N=(1,cols) 'TrainAmp_CTimepoints'
 	endif
 	if (WaveExists('TrainAmp_RecovAmpFrac')==0)	//Wave for saving ... -AdrianGR
@@ -2267,14 +2261,14 @@ Function Trains_Amp()
 	//-AdrianGR
 	Wave w_resFromInitBL = root:Results:TrainAmp_fromInitBaseline
 	Wave w_resFromInitBL_Norm = root:Results:TrainAmp_fromInitBaseline_Norm
-	Wave w_resASyncAUC = root:Results:TrainAmp_ASyncAUC
-	Wave w_resASyncLineX = root:Results:TrainAmp_ASyncLineX
-	Wave w_resASyncLineY = root:Results:TrainAmp_ASyncLineY
-	Wave w_baselineX = root:Results:TrainAmp_baselineX
-	Wave w_baselineY = root:Results:TrainAmp_baselineY
-	Wave w_resSyncAUC = root:Results:TrainAmp_SyncAUC
-	Wave w_resASyncAUC_cumulative = root:Results:TrainAmp_ASyncAUC_cumulative
-	Wave w_resSyncAUC_cumulative = root:Results:TrainAmp_SyncAUC_cumulative
+//	Wave w_resASyncAUC = root:Results:TrainAmp_ASyncAUC
+//	Wave w_resASyncLineX = root:Results:TrainAmp_ASyncLineX
+//	Wave w_resASyncLineY = root:Results:TrainAmp_ASyncLineY
+//	Wave w_baselineX = root:Results:TrainAmp_baselineX
+//	Wave w_baselineY = root:Results:TrainAmp_baselineY
+//	Wave w_resSyncAUC = root:Results:TrainAmp_SyncAUC
+//	Wave w_resASyncAUC_cumulative = root:Results:TrainAmp_ASyncAUC_cumulative
+//	Wave w_resSyncAUC_cumulative = root:Results:TrainAmp_SyncAUC_cumulative
 	Wave w_resCTimepoints = root:Results:TrainAmp_CTimepoints
 	Wave w_resRecAF = root:Results:TrainAmp_RecovAmpFrac
 	Wave/T w_resExpAll = root:Results:TrainExperiments_allInfo
@@ -2286,14 +2280,14 @@ Function Trains_Amp()
 	//Wave w_
 	
 	Variable avgT = 0.001	//define length of time interval for averaging, e.g. 2 ms -AdrianGR
-	Variable avgT2 = avgT//*5 //slightly longer interval for initial and final baseline -AdrianGR
+	Variable avgT2 = avgT//was supposed to be slightly longer interval for initial and final baseline, but got too complicated, so is now just the same as avgT -AdrianGR
 	
 	n=DimSize(w_resSync,0)+1
 	Redimension/N=(n,-1) w_resSync, w_resSync_Norm, w_resAll, w_resDel, w_resCorr
 	Redimension/N=(n) w_resExp, w_resPro, w_resFolder
 	//-AdrianGR
-	Redimension/N=(n,-1) w_resFromInitBL, w_resFromInitBL_Norm, w_resASyncAUC, w_resASyncLineX, w_resASyncLineY, w_baselineX, w_baselineY, w_resSyncAUC
-	Redimension/N=(n,-1) w_resASyncAUC_cumulative, w_resSyncAUC_cumulative
+	Redimension/N=(n,-1) w_resFromInitBL, w_resFromInitBL_Norm//, w_resASyncAUC, w_resASyncLineX, w_resASyncLineY, w_baselineX, w_baselineY, w_resSyncAUC
+//	Redimension/N=(n,-1) w_resASyncAUC_cumulative, w_resSyncAUC_cumulative
 	Redimension/N=(n,-1) w_resCTimepoints, w_resRecAF, w_resSyncPPR
 	Redimension/N=(n,-1) w_resAllPPR, w_resFromInitBL_PPR, w_resSyncPPR
 	
@@ -2321,7 +2315,7 @@ Function Trains_Amp()
 	DeleteAnnotations/W=Experiments/A //Deletes any previous tags (or other annotations) on the graph -AdrianGR
 	
 	
-	
+	//NOTE! The do-while block is an absolute mess -AdrianGR
 	do //DISABLED IN CONDITIONAL
 		//break
 		if (j>0)
@@ -2347,9 +2341,9 @@ Function Trains_Amp()
 		WaveStats/Q/R=(x0-avgT,x0) w_temp								//Getting average from final avgT of previous pulse
 		Variable preStimBaseline = V_avg
 		WaveStats/Q/R=(x1,x0+1/gTrainfreq) w_temp
-		w_resFromInitBL[n][j] = V_min - preStimBaseline	//Amplitude from baseline as defined above
-		w_resASyncLineX[n][j] = x0								//Saving X-coordinates for tonic release
-		w_resASyncLineY[n][j] = w_temp(x0)					//Saving Y-coordinates for tonic release
+//		w_resFromInitBL[n][j] = V_min - preStimBaseline	//Amplitude from baseline as defined above
+//		w_resASyncLineX[n][j] = x0								//Saving X-coordinates for tonic release
+//		w_resASyncLineY[n][j] = w_temp(x0)					//Saving Y-coordinates for tonic release
 		//w_resASyncLineY[n][j] = mean(w_temp,x0-avgT,x0)	//TODO: not sure if it is reasonable to take an average instead(?) -AdrianGR
 		
 		
@@ -2434,13 +2428,13 @@ Function Trains_Amp()
 		w_resRecAF[n][a] = recEnd / w_resSync[n][a]											//Calculate fractional recovery relative to pulse peak -AdrianGR
 		
 		
-		w_resASyncLineX[n][a] = x0a									//Save X-coordinates for async release -AdrianGR
-		w_resASyncLineY[n][a] = w_temp(x0a)							//Save Y-coordinates for async release -AdrianGR
-		if (a == gTrainStim-1)															//if-statement is necessary to also save last point -AdrianGR
-			w_resASyncLineX[n][a+1] = x0a+1/gTrainfreq
-			//w_resASyncLineY[n][a+1] = w_temp(x0a+1/gTrainfreq)
-			w_resASyncLineY[n][a] = mean(w_temp,x0a-avgT,x0a)		//TODO: would it be reasonable to take an average instead? -AdrianGR
-		endif
+//		w_resASyncLineX[n][a] = x0a									//Save X-coordinates for async release -AdrianGR
+//		w_resASyncLineY[n][a] = w_temp(x0a)							//Save Y-coordinates for async release -AdrianGR
+//		if (a == gTrainStim-1)															//if-statement is necessary to also save last point -AdrianGR
+//			w_resASyncLineX[n][a+1] = x0a+1/gTrainfreq
+//			//w_resASyncLineY[n][a+1] = w_temp(x0a+1/gTrainfreq)
+//			w_resASyncLineY[n][a] = mean(w_temp,x0a-avgT,x0a)		//TODO: would it be reasonable to take an average instead? -AdrianGR
+//		endif
 		
 		//String tempCalc
 		w_resCTimepoints[n][a] = x0a - x0 + 1/gTrainfreq			//Save timing of end of stimulation pulses relative to first pulse -AdrianGR
@@ -2452,7 +2446,7 @@ Function Trains_Amp()
 	Wave w_resSync_Norm = normalize2DWave(w_resSync)
 	
 	
-	//Calculate PPRs ('paired-pulse-ratios') -AdrianGR
+	//Calculate PPRs ('paired-pulse ratios') -AdrianGR
 	w_resAllPPR[n][1,*] = w_resAll[n][q] / w_resAll[n][q-1]
 	w_resFromInitBL_PPR[n][1,*] = w_resFromInitBL[n][q] / w_resFromInitBL[n][q-1]
 	w_resSyncPPR[n][1,*] = w_resSync[n][q] / w_resSync[n][q-1]
@@ -2504,64 +2498,54 @@ Function Trains_Amp()
 	
 	
 	
-	//WIP
-	for(a=999; a<gTrainstim; a+=1)
-		//SetDataFolder root:WorkData
-		String tempPulse = "tempPulse"+num2str(a)
-		Duplicate/O/R=(x0+dx+a/gTrainfreq,x0+(a+1)/gTrainfreq) w_temp, $tempPulse
-		
-	endfor
-	
-	
-	
 	//Doesn't work properly. This section should calculate AUCs/'charge', but old method (Trains_Charge()) is better atm. -AdrianGR
-	Duplicate/O w_temp, w_temp2														//Duplicate wave so we can subtract Init_baseline
-	w_temp2 = w_temp2 - Init_baseline												//Subtract Init_baseline
-	//Duplicate/O/RMD=[n][,*] w_resASyncLineX, w_tempASyncX
-	//Duplicate/O/RMD=[n][,*] w_resASyncLineY, w_tempASyncY
-	x0 = x0_cache; x1 = x1_cache														//Reset x0 and x1 (only necessary if they are changed before this section starts) -AdrianGR
-	for (a=0; a<gTrainStim; a+=1)
-		//break
-		Duplicate/O/RMD=[n][a,a+1] w_resASyncLineX, w_tempASyncX
-		Duplicate/O/RMD=[n][a,a+1] w_resASyncLineY, w_tempASyncY
-		//w_tempASyncY = w_tempASyncY - Init_baseline
-		Make/O/D/N=(2) w_tempX
-		w_tempX[0] = x1+a/gTrainfreq
-		w_tempX[1] = x0+(a+1)/gTrainfreq
-		Variable syncPlusASyncArea = area(w_temp2, w_tempX[0], w_tempX[1])
-		Make/O/D/N=(2) w_tempY
-		w_tempY[0] = interp(w_tempX[0], w_tempASyncX, w_tempASyncY)
-		w_tempY[1] = w_tempASyncY[0][a+1]
-		w_tempY = w_tempY - Init_baseline
-		Variable ASyncArea = areaXY(w_tempX, w_tempY, w_tempX[0], w_tempX[1])
-		
-		w_resASyncAUC[n][a] = abs(ASyncArea)
-		w_resSyncAUC[n][a] = abs(syncPlusASyncArea - ASyncArea)
-	endfor
-	KillWaves w_tempASyncX, w_tempASyncY, w_tempX, w_tempY
-	
-	
-	w_resASyncAUC_cumulative[n][0] = w_resASyncAUC[n][0]
-	//w_resASyncAUC_cumulative[n][1,*] = w_resASyncAUC[n][q] + w_resASyncAUC_cumulative[n][q-1]	//this line does the same as the for-loop below -AdrianGR
-	Variable h
-	for(h=1; h<DimSize(w_resASyncAUC,1); h+=1)
-		w_resASyncAUC_cumulative[n][h] = w_resASyncAUC[n][h] + w_resASyncAUC_cumulative[n][h-1]
-	endfor
-	w_resSyncAUC_cumulative[n][0] = w_resSyncAUC[n][0]
-	//w_resSyncAUC_cumulative[n][1,*] = w_resSyncAUC[n][q] + w_resSyncAUC_cumulative[n][q-1]		//this line does the same as the for-loop below -AdrianGR
-	for(h=1; h<DimSize(w_resSyncAUC,1); h+=1)
-		w_resSyncAUC_cumulative[n][h] = w_resSyncAUC[n][h] + w_resSyncAUC_cumulative[n][h-1]
-	endfor
-	
-	//print "Total asynchronous release AUC:\t", w_resASyncAUC_cumulative[n][INF]
-	//print "Total synchronous release AUC:\t", w_resSyncAUC_cumulative[n][INF]
-	
-	
-	w_baselineX[n][,*] = w_resASyncLineX[n][q]
-	w_baselineY[n][,*] = Init_baseline
-	AppendToGraph/W=Experiments/C=(0,55555,55555) w_baselineY[n][,*] vs w_baselineX[n][,*] //In effect shows Init_baseline on graph -AdrianGR
-	
-	AppendToGraph/W=Experiments/C=(0,0,55555) w_resASyncLineY[n][,*] vs w_resASyncLineX[n][,*] //-AdrianGR
+//	Duplicate/O w_temp, w_temp2														//Duplicate wave so we can subtract Init_baseline
+//	w_temp2 = w_temp2 - Init_baseline												//Subtract Init_baseline
+//	//Duplicate/O/RMD=[n][,*] w_resASyncLineX, w_tempASyncX
+//	//Duplicate/O/RMD=[n][,*] w_resASyncLineY, w_tempASyncY
+//	x0 = x0_cache; x1 = x1_cache														//Reset x0 and x1 (only necessary if they are changed before this section starts) -AdrianGR
+//	for (a=0; a<gTrainStim; a+=1)
+//		//break
+//		Duplicate/O/RMD=[n][a,a+1] w_resASyncLineX, w_tempASyncX
+//		Duplicate/O/RMD=[n][a,a+1] w_resASyncLineY, w_tempASyncY
+//		//w_tempASyncY = w_tempASyncY - Init_baseline
+//		Make/O/D/N=(2) w_tempX
+//		w_tempX[0] = x1+a/gTrainfreq
+//		w_tempX[1] = x0+(a+1)/gTrainfreq
+//		Variable syncPlusASyncArea = area(w_temp2, w_tempX[0], w_tempX[1])
+//		Make/O/D/N=(2) w_tempY
+//		w_tempY[0] = interp(w_tempX[0], w_tempASyncX, w_tempASyncY)
+//		w_tempY[1] = w_tempASyncY[0][a+1]
+//		w_tempY = w_tempY - Init_baseline
+//		Variable ASyncArea = areaXY(w_tempX, w_tempY, w_tempX[0], w_tempX[1])
+//		
+//		w_resASyncAUC[n][a] = abs(ASyncArea)
+//		w_resSyncAUC[n][a] = abs(syncPlusASyncArea - ASyncArea)
+//	endfor
+//	KillWaves w_tempASyncX, w_tempASyncY, w_tempX, w_tempY
+//	
+//	
+//	w_resASyncAUC_cumulative[n][0] = w_resASyncAUC[n][0]
+//	//w_resASyncAUC_cumulative[n][1,*] = w_resASyncAUC[n][q] + w_resASyncAUC_cumulative[n][q-1]	//this line does the same as the for-loop below -AdrianGR
+//	Variable h
+//	for(h=1; h<DimSize(w_resASyncAUC,1); h+=1)
+//		w_resASyncAUC_cumulative[n][h] = w_resASyncAUC[n][h] + w_resASyncAUC_cumulative[n][h-1]
+//	endfor
+//	w_resSyncAUC_cumulative[n][0] = w_resSyncAUC[n][0]
+//	//w_resSyncAUC_cumulative[n][1,*] = w_resSyncAUC[n][q] + w_resSyncAUC_cumulative[n][q-1]		//this line does the same as the for-loop below -AdrianGR
+//	for(h=1; h<DimSize(w_resSyncAUC,1); h+=1)
+//		w_resSyncAUC_cumulative[n][h] = w_resSyncAUC[n][h] + w_resSyncAUC_cumulative[n][h-1]
+//	endfor
+//	
+//	//print "Total asynchronous release AUC:\t", w_resASyncAUC_cumulative[n][INF]
+//	//print "Total synchronous release AUC:\t", w_resSyncAUC_cumulative[n][INF]
+//	
+//	
+//	w_baselineX[n][,*] = w_resASyncLineX[n][q]
+//	w_baselineY[n][,*] = Init_baseline
+//	AppendToGraph/W=Experiments/C=(0,55555,55555) w_baselineY[n][,*] vs w_baselineX[n][,*] //In effect shows Init_baseline on graph -AdrianGR
+//	
+//	AppendToGraph/W=Experiments/C=(0,0,55555) w_resASyncLineY[n][,*] vs w_resASyncLineX[n][,*] //-AdrianGR
 	
 	
 	print "n =	", n
@@ -2571,7 +2555,7 @@ Function Trains_Amp()
 	//w_resPro[n]=get_protocolname2(gTheWave)			//Save name of the protocol of the analyzed series
 	//w_resFolder[n]=folder[gWaveindex]
 	
-	//New block for saving info stuff (old block above) -AdrianGR
+	//New block for saving info stuff (old block above). Not certain it works on data from Pulse software -AdrianGR
 	Wave/T w_extractedInfo = extractWaveListInfo()
 	w_resExp[n] = w_extractedInfo[%exper][gWaveindex]
 	w_resPro[n] = w_extractedInfo[%protocol][gWaveindex]
@@ -2651,14 +2635,14 @@ Function Trains_Amp()
 	endif
 	
 	
-	if(1==0) //DISABLED
-		SetDataFolder root:Results:
-		transposeWaveMake(TrainAmp_All)
-		String refWaveList = "root:Results:TrainAmp_All;root:Results:TrainAmp_corrected;root:Results:TrainAmp_Delay;root:Results:TrainAmp_fromInitBaseline;root:Results:TrainAmp_Sync;root:Results:TrainAmp_CAll;root:Results:TrainAmp_CCum;root:Results:TrainAmp_CSync;root:Results:TrainAmp_CSyncCum;root:Results:TrainAmp_CASync;root:Results:TrainAmp_CASyncCum"
-		Make/O/WAVE refWave = ListToWaveRefWave(refWaveList)
-		
-		Concatenate/O/NP=1 {refWave}, w_resSummaryTest
-	endif
+//	if(1==0) //DISABLED
+//		SetDataFolder root:Results:
+//		transposeWaveMake(TrainAmp_All)
+//		String refWaveList = "root:Results:TrainAmp_All;root:Results:TrainAmp_corrected;root:Results:TrainAmp_Delay;root:Results:TrainAmp_fromInitBaseline;root:Results:TrainAmp_Sync;root:Results:TrainAmp_CAll;root:Results:TrainAmp_CCum;root:Results:TrainAmp_CSync;root:Results:TrainAmp_CSyncCum;root:Results:TrainAmp_CASync;root:Results:TrainAmp_CASyncCum"
+//		Make/O/WAVE refWave = ListToWaveRefWave(refWaveList)
+//		
+//		Concatenate/O/NP=1 {refWave}, w_resSummaryTest
+//	endif
 	
 	
 	
@@ -3455,27 +3439,6 @@ Function BlankArtifactInTrain(w,x0,x1,freq,num_stim,[AverageT]) //Added AverageT
 //	while (i<num_stim)
 End
 
-Function BlankArtifactInTrain2(w,x0,x1,freq,num_stim)
-	wave w
-	variable x0,x1 //x-coordinates of first artifact 
-	variable freq,num_stim
-	variable i, y0, y1
-	string asyncdestwavename
-	SVAR gTheWave=root:Globals:gTheWave
-	
-	i=0
-	asyncdestwavename=gTheWave+"_async"
-	wave/Z wavex=root:WorkData:$asyncdestwavename
-	wavex=NaN
-	Make/D/N=4/O W_coef
-		do
-		w[x2pnt(w,x0+i/freq),x2pnt(w,0.000025*i+x1+i/freq)]=w[x2pnt(w,x0+i/freq)-1]
-		wavex[x2pnt(wavex,x0+i/freq),x2pnt(wavex,0.000025*i+x1+i/freq)]=w[x2pnt(w,x0+i/freq)-1]
-		i += 1
-	while (i<num_stim)
-//	interpolate2 wavex
-End
-
 
 Function RemTestPulse(w)
 	string w
@@ -3818,7 +3781,8 @@ Function proc_Init (ctrlName) : Buttoncontrol
 			index += 1
 		while(1)
 	DisplayWaveListAnal(gWaveList)
-	End
+	Button button_RefreshCursors, win=NeuroBunny, disable=0
+	//End
 End
 
 Function Proc_Baseline(ctrlName) : ButtonControl
@@ -3985,6 +3949,22 @@ End
 Function proc_button_RefreshCursors(ctrlName) : ButtonControl
 	String ctrlName
 	refreshCursors()
+End
+
+Function proc_checkFixCursors(CB_Struct) : CheckBoxControl
+	STRUCT WMCheckBoxAction &CB_Struct
+	
+	
+	switch(CB_Struct.eventCode)
+		case 2:
+			if(CB_Struct.checked == 1)
+				CheckBox chk_IgnoreSavedCursors, disable=2
+			else
+				CheckBox chk_IgnoreSavedCursors, disable=0
+			endif
+	endswitch
+	
+	return 0
 End
 
 
@@ -5425,10 +5405,12 @@ Function testOpenStuff([kill])
 	endif
 	Variable left = 10, top = 10, width = 400, height = 200
 	if(kill <= 0)
-		String subDirList = "grouped_1s;grouped_3s;grouped_5s;grouped_9s;"
+		//String subDirList = "grouped_1s;grouped_3s;grouped_5s;grouped_9s;"
+		String subDirList = "grouped_1s_2;grouped_3s_2;grouped_5s_2;grouped_9s_2;"
 		String resTypePref = "TrainAmp_"
 		String t = resTypePref
-		String resTypeList = "Sync_Norm;CASyncCum;CSyncCum;Sync_PPR;RTSRy;"
+		String resTypeList = "Sync;"
+		//String resTypeList = "Sync;Sync_Norm;CASyncCum;CSyncCum;Sync_PPR;RTSRy;"
 		String genoPrefList = "KO213;KO;Het;"
 		Variable i,j,k,tableIndex=1
 		for(i=0; i<ItemsInList(subDirList); i+=1)
@@ -6020,8 +6002,4 @@ Function singleRegExMatch(inString, regExPattern)
 	endif
 	
 	return V_flag
-End
-
-Function testJumpCursor()
-	
 End
